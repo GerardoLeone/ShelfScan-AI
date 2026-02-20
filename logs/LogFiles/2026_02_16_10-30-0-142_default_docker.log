@@ -1,0 +1,36 @@
+2026-02-16T13:05:15.1883747Z    _|_|                                            
+2026-02-16T13:05:15.1885842Z  _|    _|  _|_|_|_|  _|    _|  _|  _|_|    _|_|    
+2026-02-16T13:05:15.1885933Z  _|_|_|_|      _|    _|    _|  _|_|      _|_|_|_|  
+2026-02-16T13:05:15.1886018Z  _|    _|    _|      _|    _|  _|        _|        
+2026-02-16T13:05:15.1886055Z  _|    _|  _|_|_|_|    _|_|_|  _|          _|_|_|
+2026-02-16T13:05:15.1886098Z 
+2026-02-16T13:05:15.1886138Z      J A V A   O N   A P P   S E R V I C E
+2026-02-16T13:05:15.1886174Z 
+2026-02-16T13:05:15.1886211Z Documentation: https://aka.ms/appservice
+2026-02-16T13:05:15.1886248Z 
+2026-02-16T13:05:15.1886310Z **NOTE**: No files or system changes outside of /home will persist beyond your application's current session. /home is your application's persistent storage and is shared across all the server instances.
+2026-02-16T13:05:15.1886345Z 
+2026-02-16T13:05:15.1886376Z 
+2026-02-16T13:05:15.1895522Z Determined OS to be: ubuntu
+2026-02-16T13:05:15.1895636Z Updating /etc/ssh/sshd_config to use PORT 2222
+2026-02-16T13:05:15.1996905Z Starting ssh service...
+2026-02-16T13:05:15.8590041Z ssh-keygen: generating new host keys: RSA ECDSA ED25519 
+2026-02-16T13:05:15.9472765Z  * Starting OpenBSD Secure Shell server sshd
+2026-02-16T13:05:15.9635226Z    ...done.
+2026-02-16T13:05:16.0041125Z  * sshd is running
+2026-02-16T13:05:16.0152988Z ## Printing build info...
+2026-02-16T13:05:16.0178445Z                                            PACKAGE |                             VERSION | COMMIT
+2026-02-16T13:05:16.0178575Z        Microsoft.AppService.WebsitesExtensionsJava |                        1.0.03290234 | ae284a4
+2026-02-16T13:05:16.0178622Z                                               self |                        1.0.03296336 | 76247a61
+2026-02-16T13:05:16.0181504Z ## Done printing build info.
+2026-02-16T13:05:16.0182459Z Container info: WEBSITE_INSTANCE_ID = 4811481022406343dec17cf4fd8bdf07b861b8e964e8b6c357e7bf184c92d6e0 ; WEBSITE_SITE_NAME = shelfscanai-dev
+2026-02-16T13:05:16.0277013Z Add public certificates to keystore if exists...
+2026-02-16T13:05:16.0279570Z Add private certificates to keystore if exists...
+2026-02-16T13:05:16.0284699Z Configuring max heap = 1024 MB
+2026-02-16T13:05:16.0569569Z STARTUP_FILE=
+2026-02-16T13:05:16.0569900Z STARTUP_COMMAND=java -jar /home/site/wwwroot/ShelfScan-AI-0.0.1-SNAPSHOT.jar
+2026-02-16T13:05:16.0569955Z No STARTUP_FILE available.
+2026-02-16T13:05:16.0570265Z Running STARTUP_COMMAND: java -jar /home/site/wwwroot/ShelfScan-AI-0.0.1-SNAPSHOT.jar
+2026-02-16T13:05:16.0814971Z Error: Unable to access jarfile /home/site/wwwroot/ShelfScan-AI-0.0.1-SNAPSHOT.jar
+2026-02-16T13:05:16.0838962Z Finished running startup file 'java -jar /home/site/wwwroot/ShelfScan-AI-0.0.1-SNAPSHOT.jar'. Exit code: '1'.
+2026-02-16T13:05:16.0839116Z Custom startup complete. Now, exiting with exit code '1'

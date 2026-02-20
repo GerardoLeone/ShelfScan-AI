@@ -1,0 +1,120 @@
+2026-02-16T13:01:52.9338723Z Container start method called.
+2026-02-16T13:01:52.9386105Z Establishing network.
+2026-02-16T13:01:52.9443912Z Pulling image: azure-app-service/java:25.0.1-r260110.
+2026-02-16T13:02:04.1833646Z Image azure-app-service/java:25.0.1-r260110 is pulled from registry 10.1.0.5:13209
+2026-02-16T13:02:04.1844175Z Container is starting.
+2026-02-16T13:02:04.1924240Z Establishing user namespace if not established already.
+2026-02-16T13:02:04.1925915Z Establishing network if not established already.
+2026-02-16T13:02:04.1927535Z Mounting volumes.
+2026-02-16T13:02:04.1931971Z Nested mountpoint 
+2026-02-16T13:02:04.1972212Z Nested mountpoint volatile/logs
+2026-02-16T13:02:04.2027063Z Nested mountpoint 
+2026-02-16T13:02:04.2153919Z Creating container.
+2026-02-16T13:02:04.2166751Z Creating pipes for streaming container io.
+2026-02-16T13:02:04.2172165Z Creating stdout named pipe at /podr/container/pipe/61f0860969cf_shelfscanai-dev/stdout_f796cdb509914a0cb44b3ca579717da3.
+2026-02-16T13:02:04.2200686Z Successfully created stdout named pipe at: /podr/container/pipe/61f0860969cf_shelfscanai-dev/stdout_f796cdb509914a0cb44b3ca579717da3.
+2026-02-16T13:02:04.2204633Z Opening named pipe /podr/container/pipe/61f0860969cf_shelfscanai-dev/stdout_f796cdb509914a0cb44b3ca579717da3 for reading in non-blocking mode.
+2026-02-16T13:02:04.2207258Z Successfully opened named pipe: /podr/container/pipe/61f0860969cf_shelfscanai-dev/stdout_f796cdb509914a0cb44b3ca579717da3.
+2026-02-16T13:02:04.2212078Z Successfully removed non-blocking flag from /podr/container/pipe/61f0860969cf_shelfscanai-dev/stdout_f796cdb509914a0cb44b3ca579717da3.
+2026-02-16T13:02:04.2215281Z Creating stderr named pipe at /podr/container/pipe/61f0860969cf_shelfscanai-dev/stderr_d1320023090a40fb9606711678d419f5.
+2026-02-16T13:02:04.2243015Z Successfully created stderr named pipe at: /podr/container/pipe/61f0860969cf_shelfscanai-dev/stderr_d1320023090a40fb9606711678d419f5.
+2026-02-16T13:02:04.2250268Z Opening named pipe /podr/container/pipe/61f0860969cf_shelfscanai-dev/stderr_d1320023090a40fb9606711678d419f5 for reading in non-blocking mode.
+2026-02-16T13:02:04.2253887Z Successfully opened named pipe: /podr/container/pipe/61f0860969cf_shelfscanai-dev/stderr_d1320023090a40fb9606711678d419f5.
+2026-02-16T13:02:04.2282257Z Successfully removed non-blocking flag from /podr/container/pipe/61f0860969cf_shelfscanai-dev/stderr_d1320023090a40fb9606711678d419f5.
+2026-02-16T13:02:04.2297791Z Creating container with image: azure-app-service/java:25.0.1-r260110 from registry: 10.1.0.5:13209 and fully qualified image name: 10.1.0.5:13209/azure-app-service/java:25.0.1-r260110
+2026-02-16T13:02:04.9596452Z Starting container: 61f0860969cf_shelfscanai-dev.
+2026-02-16T13:02:05.5019031Z Starting watchers and probes.
+2026-02-16T13:02:05.5538219Z Starting metrics collection.
+2026-02-16T13:02:05.5544643Z Container is running.
+2026-02-16T13:02:05.6252899Z Container start method finished after 12686 ms.
+2026-02-16T13:03:14.8526566Z Container has finished running with exit code: 0.
+2026-02-16T13:03:14.9070582Z Container is terminating. Grace period: 5 seconds.
+2026-02-16T13:03:14.9724161Z Stop and delete container. Retry count = 0
+2026-02-16T13:03:14.9954735Z Stopping container: 61f0860969cf_shelfscanai-dev.
+2026-02-16T13:03:15.9323080Z Deleting container: 61f0860969cf_shelfscanai-dev. Retry count = 0
+2026-02-16T13:03:18.5550765Z Container spec TerminationMessagePolicy  path 
+2026-02-16T13:03:18.5787750Z Container is terminated. Total time elapsed: 3670 ms.
+2026-02-16T13:03:18.5831012Z Site container: shelfscanai-dev terminated during site startup.
+2026-02-16T13:03:18.8696819Z Site startup probe failed after 73.1123083 seconds.
+2026-02-16T13:03:20.2304230Z Failed to start site. Revert by stopping site.
+2026-02-16T13:03:20.4428745Z Site: shelfscanai-dev stopped.
+2026-02-16T13:04:20.5194479Z Container start method called.
+2026-02-16T13:04:20.5198261Z Establishing network.
+2026-02-16T13:04:20.5199740Z Pulling image: azure-app-service/java:25.0.1-r260110.
+2026-02-16T13:04:20.9608072Z Image azure-app-service/java:25.0.1-r260110 is pulled from registry 10.1.0.4:13209
+2026-02-16T13:04:20.9609663Z Container is starting.
+2026-02-16T13:04:20.9611528Z Establishing user namespace if not established already.
+2026-02-16T13:04:20.9612869Z Establishing network if not established already.
+2026-02-16T13:04:20.9614259Z Mounting volumes.
+2026-02-16T13:04:20.9616092Z Nested mountpoint 
+2026-02-16T13:04:20.9624391Z Nested mountpoint volatile/logs
+2026-02-16T13:04:20.9712369Z Nested mountpoint 
+2026-02-16T13:04:20.9719711Z Creating container.
+2026-02-16T13:04:20.9720797Z Creating pipes for streaming container io.
+2026-02-16T13:04:20.9721943Z Creating stdout named pipe at /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stdout_28b623c54d26481397a12c78fe8f3209.
+2026-02-16T13:04:20.9735609Z Successfully created stdout named pipe at: /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stdout_28b623c54d26481397a12c78fe8f3209.
+2026-02-16T13:04:20.9737499Z Opening named pipe /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stdout_28b623c54d26481397a12c78fe8f3209 for reading in non-blocking mode.
+2026-02-16T13:04:20.9739819Z Successfully opened named pipe: /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stdout_28b623c54d26481397a12c78fe8f3209.
+2026-02-16T13:04:20.9765863Z Successfully removed non-blocking flag from /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stdout_28b623c54d26481397a12c78fe8f3209.
+2026-02-16T13:04:20.9782138Z Creating stderr named pipe at /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stderr_0dae12c6266542939dde71e8ad7329ca.
+2026-02-16T13:04:20.9791870Z Successfully created stderr named pipe at: /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stderr_0dae12c6266542939dde71e8ad7329ca.
+2026-02-16T13:04:20.9800396Z Opening named pipe /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stderr_0dae12c6266542939dde71e8ad7329ca for reading in non-blocking mode.
+2026-02-16T13:04:20.9806972Z Successfully opened named pipe: /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stderr_0dae12c6266542939dde71e8ad7329ca.
+2026-02-16T13:04:20.9811708Z Successfully removed non-blocking flag from /podr/container/pipe/4514e7eecd7e_shelfscanai-dev/stderr_0dae12c6266542939dde71e8ad7329ca.
+2026-02-16T13:04:20.9819205Z Creating container with image: azure-app-service/java:25.0.1-r260110 from registry: 10.1.0.4:13209 and fully qualified image name: 10.1.0.4:13209/azure-app-service/java:25.0.1-r260110
+2026-02-16T13:04:21.1841034Z Starting container: 4514e7eecd7e_shelfscanai-dev.
+2026-02-16T13:04:21.2073986Z Starting watchers and probes.
+2026-02-16T13:04:21.2081689Z Starting metrics collection.
+2026-02-16T13:04:21.2085404Z Container is running.
+2026-02-16T13:04:21.7890379Z Container start method finished after 1264 ms.
+2026-02-16T13:04:22.4791002Z Container has finished running with exit code: 1.
+2026-02-16T13:04:22.4792579Z Container is terminating. Grace period: 5 seconds.
+2026-02-16T13:04:22.4797018Z Stop and delete container. Retry count = 0
+2026-02-16T13:04:22.4798259Z Stopping container: 4514e7eecd7e_shelfscanai-dev.
+2026-02-16T13:04:22.5019465Z Deleting container: 4514e7eecd7e_shelfscanai-dev. Retry count = 0
+2026-02-16T13:04:22.5699194Z Container spec TerminationMessagePolicy  path 
+2026-02-16T13:04:22.5701124Z Container is terminated. Total time elapsed: 90 ms.
+2026-02-16T13:04:22.5702947Z Site container: shelfscanai-dev terminated during site startup.
+2026-02-16T13:04:22.5713308Z Site startup probe failed after 0.7759592 seconds.
+2026-02-16T13:04:22.6271170Z Failed to start site. Revert by stopping site.
+2026-02-16T13:04:22.6294552Z Site: shelfscanai-dev stopped.
+2026-02-16T13:05:14.4333250Z Container start method called.
+2026-02-16T13:05:14.4335671Z Establishing network.
+2026-02-16T13:05:14.4336998Z Pulling image: azure-app-service/java:25.0.1-r260110.
+2026-02-16T13:05:14.5547096Z Container is starting.
+2026-02-16T13:05:14.5555957Z Establishing user namespace if not established already.
+2026-02-16T13:05:14.5573177Z Establishing network if not established already.
+2026-02-16T13:05:14.5579205Z Mounting volumes.
+2026-02-16T13:05:14.5581572Z Nested mountpoint 
+2026-02-16T13:05:14.5600806Z Nested mountpoint volatile/logs
+2026-02-16T13:05:14.5624449Z Nested mountpoint 
+2026-02-16T13:05:14.5710668Z Creating container.
+2026-02-16T13:05:14.5712500Z Creating pipes for streaming container io.
+2026-02-16T13:05:14.5715960Z Creating stdout named pipe at /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stdout_f045731c65e6497d9cbd7859d09af13a.
+2026-02-16T13:05:14.5718210Z Successfully created stdout named pipe at: /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stdout_f045731c65e6497d9cbd7859d09af13a.
+2026-02-16T13:05:14.5719306Z Opening named pipe /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stdout_f045731c65e6497d9cbd7859d09af13a for reading in non-blocking mode.
+2026-02-16T13:05:14.5720612Z Successfully opened named pipe: /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stdout_f045731c65e6497d9cbd7859d09af13a.
+2026-02-16T13:05:14.5721713Z Successfully removed non-blocking flag from /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stdout_f045731c65e6497d9cbd7859d09af13a.
+2026-02-16T13:05:14.5724002Z Creating stderr named pipe at /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stderr_8d944719fa2d4ebe856937d1091e247b.
+2026-02-16T13:05:14.5726826Z Successfully created stderr named pipe at: /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stderr_8d944719fa2d4ebe856937d1091e247b.
+2026-02-16T13:05:14.5732262Z Opening named pipe /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stderr_8d944719fa2d4ebe856937d1091e247b for reading in non-blocking mode.
+2026-02-16T13:05:14.5736413Z Successfully opened named pipe: /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stderr_8d944719fa2d4ebe856937d1091e247b.
+2026-02-16T13:05:14.5738484Z Successfully removed non-blocking flag from /podr/container/pipe/f960ee578c2d_shelfscanai-dev/stderr_8d944719fa2d4ebe856937d1091e247b.
+2026-02-16T13:05:14.5740447Z Creating container with image: azure-app-service/java:25.0.1-r260110 from registry: 10.1.0.4:13209 and fully qualified image name: 10.1.0.4:13209/azure-app-service/java:25.0.1-r260110
+2026-02-16T13:05:15.1110687Z Starting container: f960ee578c2d_shelfscanai-dev.
+2026-02-16T13:05:15.1320325Z Starting watchers and probes.
+2026-02-16T13:05:15.1325702Z Starting metrics collection.
+2026-02-16T13:05:15.1328730Z Container is running.
+2026-02-16T13:05:16.0931178Z Container start method finished after 1659 ms.
+2026-02-16T13:05:16.1319048Z Container has finished running with exit code: 1.
+2026-02-16T13:05:16.1331150Z Container is terminating. Grace period: 5 seconds.
+2026-02-16T13:05:16.1346105Z Stop and delete container. Retry count = 0
+2026-02-16T13:05:16.1356996Z Stopping container: f960ee578c2d_shelfscanai-dev.
+2026-02-16T13:05:16.1553031Z Deleting container: f960ee578c2d_shelfscanai-dev. Retry count = 0
+2026-02-16T13:05:16.2637523Z Container spec TerminationMessagePolicy  path 
+2026-02-16T13:05:16.2640691Z Container is terminated. Total time elapsed: 130 ms.
+2026-02-16T13:05:16.2642931Z Site container: shelfscanai-dev terminated during site startup.
+2026-02-16T13:05:16.2657522Z Site startup probe failed after 0.1717746 seconds.
+2026-02-16T13:05:16.3245217Z Failed to start site. Revert by stopping site.
+2026-02-16T13:05:16.3269202Z Site: shelfscanai-dev stopped.
+2026-02-16T13:05:16.6198306Z Site container: shelfscanai-dev_managedIdentity terminated during site startup.
