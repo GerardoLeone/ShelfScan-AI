@@ -22,4 +22,11 @@ public class Book {
 
     @Column(name="cover_url")
     private String coverUrl;
+
+    @Column(columnDefinition = "nvarchar(max)")
+    private String description;
+
+    // JSON array salvato come stringa (es: ["thriller","crime"])
+    @Column(columnDefinition = "nvarchar(max)")
+    private String tags;
 }
