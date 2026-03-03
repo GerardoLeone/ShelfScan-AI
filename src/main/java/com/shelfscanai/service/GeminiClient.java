@@ -1,12 +1,14 @@
 package com.shelfscanai.service;
 
 import com.shelfscanai.dto.GeminiGenerateContentResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 @Service
+@Slf4j
 public class GeminiClient {
 
     private final WebClient webClient;
@@ -36,6 +38,7 @@ public class GeminiClient {
                 .onStatus(
                         status -> status.is4xxClientError() || status.is5xxServerError(),
                         resp -> resp.bodyToMono(String.class).flatMap(body -> {
+                            log.warn("gemini.http.error status={} body={}", resp.statusCode(), body);
                             // LOG: qui avrai la spiegazione vera del 400
                             return Mono.error(new RuntimeException("Gemini error " + resp.statusCode() + ": " + body));
                         })

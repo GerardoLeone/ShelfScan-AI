@@ -17,6 +17,9 @@ public class Book {
     @Column(nullable = false)
     private String title;
 
+    @Column(name = "normalized_title")
+    private String normalizedTitle;
+
     private String author;
     private String genre;
 
