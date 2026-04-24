@@ -7,6 +7,7 @@ import com.shelfscanai.entity.ReadingStatus;
 import com.shelfscanai.entity.UserBook;
 import com.shelfscanai.repository.BookRepository;
 import com.shelfscanai.repository.UserBookRepository;
+import com.shelfscanai.service.BlobStorageService;
 import com.shelfscanai.service.EasyAuthUserExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ public class LibraryController {
     private final UserBookRepository userBookRepository;
     private final BookRepository bookRepository;
     private final EasyAuthUserExtractor easyAuthUserExtractor;
+    private final BlobStorageService blobStorageService;
 
     @GetMapping("/library")
     public ResponseEntity<?> getLibrary(
@@ -33,14 +35,19 @@ public class LibraryController {
 
         List<LibraryItemResponse> items = userBookRepository.findByUserKeyOrderByUpdatedAtDesc(userKey)
                 .stream()
-                .map(ub -> new LibraryItemResponse(
-                        ub.getBook().getId(),
-                        ub.getBook().getTitle(),
-                        ub.getBook().getAuthor(),
-                        ub.getBook().getCoverUrl(),
-                        ub.getStatus(),
-                        ub.getUpdatedAt()
-                ))
+                .map(ub -> {
+                    Book book = ub.getBook();
+                    String signedCoverUrl = blobStorageService.generateReadSasUrl(book.getCoverUrl());
+
+                    return new LibraryItemResponse(
+                            book.getId(),
+                            book.getTitle(),
+                            book.getAuthor(),
+                            signedCoverUrl,
+                            ub.getStatus(),
+                            ub.getUpdatedAt()
+                    );
+                })
                 .toList();
 
         return ResponseEntity.ok(items);
@@ -80,11 +87,14 @@ public class LibraryController {
         UserBook ub = userBookRepository.findByUserKeyAndBook_Id(userKey, bookId).orElse(null);
         if (ub == null) return ResponseEntity.status(404).body("Book not in library");
 
+        Book book = ub.getBook();
+        String signedCoverUrl = blobStorageService.generateReadSasUrl(book.getCoverUrl());
+
         return ResponseEntity.ok(new LibraryItemResponse(
-                ub.getBook().getId(),
-                ub.getBook().getTitle(),
-                ub.getBook().getAuthor(),
-                ub.getBook().getCoverUrl(),
+                book.getId(),
+                book.getTitle(),
+                book.getAuthor(),
+                signedCoverUrl,
                 ub.getStatus(),
                 ub.getUpdatedAt()
         ));
@@ -93,8 +103,8 @@ public class LibraryController {
     @PostMapping("/library/{bookId}")
     public ResponseEntity<?> addToLibrary(
             @PathVariable Long bookId,
-            @RequestHeader(value="X-MS-CLIENT-PRINCIPAL-ID", required=false) String principalId,
-            @RequestHeader(value="X-MS-CLIENT-PRINCIPAL-NAME", required=false) String principalName
+            @RequestHeader(value = "X-MS-CLIENT-PRINCIPAL-ID", required = false) String principalId,
+            @RequestHeader(value = "X-MS-CLIENT-PRINCIPAL-NAME", required = false) String principalName
     ) {
         String userKey = easyAuthUserExtractor.getUserKey(principalId, principalName);
         if (userKey == null) return ResponseEntity.status(401).body("Not authenticated");
@@ -104,7 +114,11 @@ public class LibraryController {
 
         userBookRepository.findByUserKeyAndBook_Id(userKey, bookId)
                 .orElseGet(() -> userBookRepository.save(
-                        UserBook.builder().userKey(userKey).book(book).status(ReadingStatus.TO_READ).build()
+                        UserBook.builder()
+                                .userKey(userKey)
+                                .book(book)
+                                .status(ReadingStatus.TO_READ)
+                                .build()
                 ));
 
         return ResponseEntity.ok().build();
@@ -113,8 +127,8 @@ public class LibraryController {
     @DeleteMapping("/library/{bookId}")
     public ResponseEntity<?> removeFromLibrary(
             @PathVariable Long bookId,
-            @RequestHeader(value="X-MS-CLIENT-PRINCIPAL-ID", required=false) String principalId,
-            @RequestHeader(value="X-MS-CLIENT-PRINCIPAL-NAME", required=false) String principalName
+            @RequestHeader(value = "X-MS-CLIENT-PRINCIPAL-ID", required = false) String principalId,
+            @RequestHeader(value = "X-MS-CLIENT-PRINCIPAL-NAME", required = false) String principalName
     ) {
         String userKey = easyAuthUserExtractor.getUserKey(principalId, principalName);
         if (userKey == null) return ResponseEntity.status(401).body("Not authenticated");
@@ -125,6 +139,4 @@ public class LibraryController {
         userBookRepository.delete(ub);
         return ResponseEntity.ok().build();
     }
-
-
 }

@@ -67,7 +67,7 @@ public class ScanService {
                             book.getId(),
                             book.getTitle(),
                             book.getAuthor(),
-                            book.getCoverUrl(),
+                            blobStorageService.generateReadSasUrl(book.getCoverUrl()),
                             book.getDescription(),
                             parseTags(book.getTags())
                     );
@@ -112,7 +112,7 @@ public class ScanService {
                         book.getId(),
                         book.getTitle(),
                         book.getAuthor(),
-                        book.getCoverUrl(),
+                        blobStorageService.generateReadSasUrl(book.getCoverUrl()),
                         book.getDescription(),
                         parseTags(book.getTags())
                 );
@@ -133,12 +133,12 @@ public class ScanService {
 
                 log.info("scan.book.created bookId={} title='{}' author='{}'",
                         book.getId(), book.getTitle(), book.getAuthor());
-            } else if (book.getCoverUrl() == null) {
+            } else if (blobStorageService.generateReadSasUrl(book.getCoverUrl()) == null) {
                 book.setCoverUrl(coverUrl);
                 book = bookRepository.save(book);
 
                 log.info("scan.book.cover.updated bookId={} coverUrl={}",
-                        book.getId(), book.getCoverUrl());
+                        book.getId(), blobStorageService.generateReadSasUrl(book.getCoverUrl()));
             } else {
                 log.info("scan.book.exists bookId={} hasDesc={}",
                         book.getId(), notBlank(book.getDescription()));
@@ -181,7 +181,7 @@ public class ScanService {
                                 book.getId(),
                                 book.getTitle(),
                                 book.getAuthor(),
-                                book.getCoverUrl(),
+                                blobStorageService.generateReadSasUrl(book.getCoverUrl()),
                                 book.getDescription(),
                                 parseTags(book.getTags())
                         );
@@ -215,7 +215,7 @@ public class ScanService {
                                 book.getId(),
                                 book.getTitle(),
                                 book.getAuthor(),
-                                book.getCoverUrl(),
+                                blobStorageService.generateReadSasUrl(book.getCoverUrl()),
                                 book.getDescription(),
                                 parseTags(book.getTags())
                         );
@@ -244,7 +244,7 @@ public class ScanService {
                     book.getId(),
                     book.getTitle(),
                     book.getAuthor(),
-                    book.getCoverUrl(),
+                    blobStorageService.generateReadSasUrl(book.getCoverUrl()),
                     book.getDescription(),
                     parseTags(book.getTags())
             );
