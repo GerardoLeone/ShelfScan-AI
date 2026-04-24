@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../features/home/home_shell.dart';
 import '../features/home/home_screen.dart';
 import '../features/scan/scan_screen.dart';
-import '../auth/profile_screen.dart';
+import '../features/auth/profile_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/home',
