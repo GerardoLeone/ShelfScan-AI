@@ -88,21 +88,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     } on DioException catch (e) {
       if (!mounted) return;
 
-      debugPrint('ERRORE PREVIEW SCAN: ${e.response?.statusCode}');
-      debugPrint('DATA: ${e.response?.data}');
-      debugPrint('MESSAGE: ${e.message}');
+      final data = e.response?.data;
+      final message = data == null || data.toString().trim().isEmpty
+          ? e.message ?? 'Errore durante la scansione.'
+          : data.toString();
 
       setState(() {
-        _error =
-        'Errore ${e.response?.statusCode ?? ''}: ${e.response?.data ?? e.message}';
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      debugPrint('ERRORE PREVIEW SCAN: $e');
-
-      setState(() {
-        _error = e.toString();
+        _error = message;
       });
     } finally {
       if (!mounted) return;

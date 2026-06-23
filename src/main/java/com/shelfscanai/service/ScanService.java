@@ -6,6 +6,7 @@ import com.shelfscanai.dto.*;
 import com.shelfscanai.entity.Book;
 import com.shelfscanai.entity.ReadingStatus;
 import com.shelfscanai.entity.UserBook;
+import com.shelfscanai.exception.GeminiScanException;
 import com.shelfscanai.repository.BookRepository;
 import com.shelfscanai.repository.UserBookRepository;
 import lombok.RequiredArgsConstructor;
@@ -486,64 +487,52 @@ public class ScanService {
     }
 
     private GeminiExtractDto callExtractWithMaxRetry(String mimeType, String base64, int maxRetries) throws Exception {
-        Exception last = null;
-        for (int attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                String model = model();
-                var req = GeminiRequests.buildExtractRequest(mimeType, base64);
+        try {
+            String model = model();
+            var req = GeminiRequests.buildExtractRequest(mimeType, base64);
 
-                log.info("gemini.extract.try attempt={} model={}", attempt, model);
+            log.info("gemini.extract.call model={}", model);
 
-                var resp = geminiClient.generateContent(model, req).block();
-                String json = firstText(resp);
+            var resp = geminiClient.generateContent(model, req).block();
+            String json = firstText(resp);
 
-                log.debug("gemini.extract.rawJson {}", json);
+            log.debug("gemini.extract.rawJson {}", json);
 
-                return objectMapper.readValue(json, GeminiExtractDto.class);
-            } catch (Exception e) {
-                last = e;
+            return objectMapper.readValue(json, GeminiExtractDto.class);
 
-                Integer status = tryGetStatusCode(e);
-                if (status != null) {
-                    log.warn("gemini.extract.fail attempt={} status={} msg={}",
-                            attempt, status, e.getMessage());
-                } else {
-                    log.warn("gemini.extract.fail attempt={} msg={}", attempt, e.getMessage());
-                }
-            }
+        } catch (Exception e) {
+            String message = cleanGeminiError(e);
+            log.warn("gemini.extract.fail msg={}", message, e);
+            throw new GeminiScanException(message);
         }
-        throw last;
     }
 
-    private GeminiEnrichDto callEnrichWithMaxRetry(String mimeType, String base64, String title, String author, int maxRetries) throws Exception {
-        Exception last = null;
-        for (int attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                String model = model();
-                var req = GeminiRequests.buildEnrichRequest(mimeType, base64, title, author);
+    private GeminiEnrichDto callEnrichWithMaxRetry(
+            String mimeType,
+            String base64,
+            String title,
+            String author,
+            int maxRetries
+    ) throws Exception {
+        try {
+            String model = model();
+            var req = GeminiRequests.buildEnrichRequest(mimeType, base64, title, author);
 
-                log.info("gemini.enrich.try attempt={} model={} title='{}' author='{}'",
-                        attempt, model, title, author);
+            log.info("gemini.enrich.call model={} title='{}' author='{}'",
+                    model, title, author);
 
-                var resp = geminiClient.generateContent(model, req).block();
-                String json = firstText(resp);
+            var resp = geminiClient.generateContent(model, req).block();
+            String json = firstText(resp);
 
-                log.debug("gemini.enrich.rawJson {}", json);
+            log.debug("gemini.enrich.rawJson {}", json);
 
-                return objectMapper.readValue(json, GeminiEnrichDto.class);
-            } catch (Exception e) {
-                last = e;
+            return objectMapper.readValue(json, GeminiEnrichDto.class);
 
-                Integer status = tryGetStatusCode(e);
-                if (status != null) {
-                    log.warn("gemini.enrich.fail attempt={} status={} msg={}",
-                            attempt, status, e.getMessage());
-                } else {
-                    log.warn("gemini.enrich.fail attempt={} msg={}", attempt, e.getMessage());
-                }
-            }
+        } catch (Exception e) {
+            String message = cleanGeminiError(e);
+            log.warn("gemini.enrich.fail msg={}", message, e);
+            throw new GeminiScanException(message);
         }
-        throw last;
     }
 
     private Integer tryGetStatusCode(Exception e) {
@@ -643,5 +632,36 @@ public class ScanService {
     private static boolean authorCompatible(String a1, String a2) {
         if (!notBlank(a1) || !notBlank(a2)) return false;
         return a1.trim().equalsIgnoreCase(a2.trim());
+    }
+
+    private String cleanGeminiError(Exception e) {
+        String raw = e.getMessage();
+
+        Throwable cause = e.getCause();
+        if ((raw == null || raw.isBlank()) && cause != null) {
+            raw = cause.getMessage();
+        }
+
+        if (raw == null || raw.isBlank()) {
+            return "Gemini non ha restituito un messaggio di errore leggibile.";
+        }
+
+        if (raw.contains("429") || raw.toLowerCase().contains("quota")) {
+            return "Quota Gemini esaurita o limite temporaneo raggiunto. Riprova più tardi.";
+        }
+
+        if (raw.contains("400")) {
+            return "Richiesta Gemini non valida. Controlla immagine o formato della richiesta.";
+        }
+
+        if (raw.contains("401") || raw.contains("403")) {
+            return "Gemini ha rifiutato la richiesta. Controlla API key o permessi.";
+        }
+
+        if (raw.contains("500") || raw.contains("503")) {
+            return "Gemini non è temporaneamente disponibile. Riprova più tardi.";
+        }
+
+        return raw.length() > 400 ? raw.substring(0, 400) + "..." : raw;
     }
 }

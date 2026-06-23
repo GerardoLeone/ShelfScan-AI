@@ -3,6 +3,7 @@ package com.shelfscanai.controller;
 import com.shelfscanai.dto.ScanConfirmRequest;
 import com.shelfscanai.dto.ScanPreviewResponse;
 import com.shelfscanai.dto.ScanResponse;
+import com.shelfscanai.exception.GeminiScanException;
 import com.shelfscanai.service.EasyAuthUserExtractor;
 import com.shelfscanai.service.ScanService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,11 @@ public class ScanController {
 
         ScanPreviewResponse resp = scanService.preview(image, title, author, userKey);
         return ResponseEntity.ok(resp);
+    }
+
+    @ExceptionHandler(GeminiScanException.class)
+    public ResponseEntity<?> handleGeminiScanException(GeminiScanException e) {
+        return ResponseEntity.status(502).body(e.getMessage());
     }
 
     @PostMapping(value = "/confirm", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
