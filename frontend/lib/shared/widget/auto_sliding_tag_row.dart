@@ -6,16 +6,14 @@ import 'package:flutter/material.dart';
 class AutoSlidingTagRow extends StatefulWidget {
   final List<String> tags;
   final Duration pause;
-  final Duration forwardDuration;
-  final Duration backwardDuration;
+  final double pixelsPerSecond;
   final double height;
 
   const AutoSlidingTagRow({
     super.key,
     required this.tags,
-    this.pause = const Duration(milliseconds: 900),
-    this.forwardDuration = const Duration(seconds: 10),
-    this.backwardDuration = const Duration(seconds: 10),
+    this.pause = const Duration(milliseconds: 450),
+    this.pixelsPerSecond = 48,
     this.height = 28,
   });
 
@@ -34,19 +32,16 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkOverflowAndStart();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkOverflowAndStart());
   }
 
   @override
   void didUpdateWidget(covariant AutoSlidingTagRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (oldWidget.tags.join('|') != widget.tags.join('|')) {
       _animationToken++;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _checkOverflowAndStart();
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkOverflowAndStart());
     }
   }
 
@@ -60,9 +55,7 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
   }
 
   void _onScroll() {
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   void _checkOverflowAndStart() {
@@ -71,15 +64,11 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
     final overflowing = _scrollController.position.maxScrollExtent > 1;
 
     if (_isOverflowing != overflowing) {
-      setState(() {
-        _isOverflowing = overflowing;
-      });
+      setState(() => _isOverflowing = overflowing);
     }
 
     if (!overflowing) {
-      if (_scrollController.offset != 0) {
-        _scrollController.jumpTo(0);
-      }
+      if (_scrollController.offset != 0) _scrollController.jumpTo(0);
       return;
     }
 
@@ -89,7 +78,7 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
   Future<void> _startLoop() async {
     final token = ++_animationToken;
 
-    if (!mounted || !_scrollController.hasClients || _disposed) return;
+    if (!_canContinue(token)) return;
 
     await Future<void>.delayed(widget.pause);
     if (!_canContinue(token)) return;
@@ -98,20 +87,15 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
       final maxExtent = _scrollController.position.maxScrollExtent;
       if (maxExtent <= 1) break;
 
-      final forwardMs = math.max(
-        1800,
-        (widget.forwardDuration.inMilliseconds * (maxExtent / 120)).round(),
-      );
-
-      final backwardMs = math.max(
-        1800,
-        (widget.backwardDuration.inMilliseconds * (maxExtent / 120)).round(),
+      final ms = math.max(
+        1200,
+        ((maxExtent / widget.pixelsPerSecond) * 1000).round(),
       );
 
       await _scrollController.animateTo(
         maxExtent,
-        duration: Duration(milliseconds: forwardMs),
-        curve: Curves.easeInOutCubic,
+        duration: Duration(milliseconds: ms),
+        curve: Curves.linear,
       );
 
       if (!_canContinue(token)) break;
@@ -119,8 +103,8 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
 
       await _scrollController.animateTo(
         0,
-        duration: Duration(milliseconds: backwardMs),
-        curve: Curves.easeInOutCubic,
+        duration: Duration(milliseconds: ms),
+        curve: Curves.linear,
       );
 
       if (!_canContinue(token)) break;
@@ -137,34 +121,23 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
 
   LinearGradient _buildGradient(Rect rect) {
     if (!_isOverflowing || rect.width <= 0) {
-      return const LinearGradient(
-        colors: [Colors.white, Colors.white],
-      );
+      return const LinearGradient(colors: [Colors.white, Colors.white]);
     }
 
     final maxExtent = _scrollController.hasClients
         ? _scrollController.position.maxScrollExtent
         : 0.0;
-    final offset =
-    _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
 
     if (maxExtent <= 0) {
-      return const LinearGradient(
-        colors: [Colors.white, Colors.white],
-      );
+      return const LinearGradient(colors: [Colors.white, Colors.white]);
     }
 
     final progress = (offset / maxExtent).clamp(0.0, 1.0);
     const fadeFraction = 0.10;
 
-    final leftStrength = Curves.easeOut.transform(progress);
-    final rightStrength = Curves.easeOut.transform(1 - progress);
-
-    final leftFade = fadeFraction * leftStrength;
-    final rightFade = fadeFraction * rightStrength;
-
-    final leftOpaqueStop = leftFade.clamp(0.0, 0.25);
-    final rightOpaqueStart = (1.0 - rightFade).clamp(0.75, 1.0);
+    final leftFade = fadeFraction * Curves.easeOut.transform(progress);
+    final rightFade = fadeFraction * Curves.easeOut.transform(1 - progress);
 
     return LinearGradient(
       begin: Alignment.centerLeft,
@@ -177,8 +150,8 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
       ],
       stops: [
         0.0,
-        leftOpaqueStop,
-        rightOpaqueStart,
+        leftFade.clamp(0.0, 0.25),
+        (1.0 - rightFade).clamp(0.75, 1.0),
         1.0,
       ],
     );
@@ -186,6 +159,8 @@ class _AutoSlidingTagRowState extends State<AutoSlidingTagRow> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.tags.isEmpty) return const SizedBox.shrink();
+
     return SizedBox(
       height: widget.height,
       child: ShaderMask(
@@ -221,23 +196,17 @@ class _TagBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.16),
-          width: 1,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 5,
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.visible,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: Colors.white.withValues(alpha: 0.95),
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.1,
-          ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.visible,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: Colors.white.withValues(alpha: 0.95),
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
         ),
       ),
     );

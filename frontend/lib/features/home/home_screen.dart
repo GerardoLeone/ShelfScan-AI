@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/home/widget/book_poster_tile.dart';
 import 'package:frontend/features/library/library_provider.dart';
 import 'package:frontend/models/user_book_dto.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -219,13 +220,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             status: b.status,
                             tags: b.tags,
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Apri dettaglio libro id=${b.bookId}',
-                                  ),
-                                ),
-                              );
+                                context.push('/books/${b.bookId}', extra: b);
                             },
                           );
                         },

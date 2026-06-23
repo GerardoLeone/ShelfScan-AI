@@ -5,6 +5,8 @@ class UserBookDto {
   final String author;
   final String? coverUrl;
   final String status;
+  final int? currentPage;
+  final String description;
   final List<String> tags;
 
   const UserBookDto({
@@ -14,6 +16,8 @@ class UserBookDto {
     required this.author,
     required this.coverUrl,
     required this.status,
+    required this.currentPage,
+    required this.description,
     required this.tags,
   });
 
@@ -32,6 +36,10 @@ class UserBookDto {
             json['book']?['cover_url'],
       ),
       status: _asString(json['status'], fallback: 'TO_READ'),
+      currentPage: _asNullableInt(json['currentPage'] ?? json['current_page']),
+      description: _asString(
+        json['description'] ?? json['book']?['description'],
+      ),
       tags: _asStringList(json['tags'] ?? json['book']?['tags']),
     );
   }
@@ -41,6 +49,14 @@ class UserBookDto {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
+  }
+
+  static int? _asNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   static String _asString(dynamic value, {String fallback = ''}) {

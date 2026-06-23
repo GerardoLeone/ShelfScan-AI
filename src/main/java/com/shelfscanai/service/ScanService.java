@@ -29,216 +29,412 @@ public class ScanService {
     private final ObjectMapper objectMapper;
     private final Environment env;
 
-    public ScanResponse scan(MultipartFile image, String titleHint, String authorHint, String userKey) throws Exception {
+    private void ensureUserBookWithCustomMetadata(
+            String userKey,
+            Book book,
+            ScanConfirmRequest req
+    ) throws Exception {
+        UserBook ub = userBookRepository.findByUserKeyAndBook_Id(userKey, book.getId())
+                .orElse(null);
+
+        if (ub == null) {
+            ub = UserBook.builder()
+                    .userKey(userKey)
+                    .book(book)
+                    .status(ReadingStatus.TO_READ)
+                    .build();
+        }
+
+        ub.setCustomTitle(cleanOrNull(req.customTitle()));
+        ub.setCustomTags(normalizeTagsJson(req.customTagsJson()));
+
+        userBookRepository.save(ub);
+
+        log.info("userbook.upsert.custom userKey={} bookId={}", userKey, book.getId());
+    }
+
+    private String cleanOrNull(String value) {
+        if (value == null) return null;
+        String cleaned = value.trim();
+        return cleaned.isEmpty() ? null : cleaned;
+    }
+
+    public ScanPreviewResponse preview(
+            MultipartFile image,
+            String titleHint,
+            String authorHint,
+            String userKey
+    ) throws Exception {
         long t0 = System.currentTimeMillis();
 
         try {
             if (image == null || image.isEmpty()) throw new IllegalArgumentException("Image is required");
             if (userKey == null || userKey.isBlank()) throw new IllegalArgumentException("Not authenticated");
 
-            log.info("scan.start userKey={} titleHint='{}' authorHint='{}' filename={} size={}",
-                    userKey, titleHint, authorHint,
-                    image.getOriginalFilename(), image.getSize());
+            log.info("scan.preview.start userKey={} titleHint='{}' authorHint='{}' filename={} size={}",
+                    userKey, titleHint, authorHint, image.getOriginalFilename(), image.getSize());
 
             String mimeType = image.getContentType() != null ? image.getContentType() : "image/jpeg";
             String base64 = Base64.getEncoder().encodeToString(image.getBytes());
 
-            // 1) Se mi passi title+author già validi, provo subito lookup DB e potenzialmente salto Gemini
             Book book = null;
-            if (notBlank(titleHint) && notBlank(authorHint)) {
-                book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(titleHint.trim(), authorHint.trim())
-                        .orElse(null);
 
-                if (book != null) {
-                    log.info("scan.lookup.hint.hit userKey={} bookId={} hasDesc={}",
-                            userKey, book.getId(), notBlank(book.getDescription()));
-                } else {
-                    log.info("scan.lookup.hint.miss userKey={}", userKey);
+            /**
+             * PREVIEW SENZA USARE GEMINI (RISPARMIO)
+             */
+            if (!geminiEnabled()) {
+                log.warn("scan.preview.mock.enabled userKey={} titleHint='{}' authorHint='{}'",
+                        userKey, titleHint, authorHint);
+
+                String mockTitle = notBlank(titleHint) ? titleHint.trim() : "Dragon Ball 2";
+                String mockAuthor = notBlank(authorHint) ? authorHint.trim() : "Akira Toriyama";
+
+                Book donor = null;
+
+                if (notBlank(mockAuthor) && notBlank(mockTitle)) {
+                    String normalized = normalizeTitleKey(mockTitle);
+                    log.warn("MOCK SEARCH normalized='{}' original='{}'", normalized, mockTitle);
+
+                    List<Book> candidates = bookRepository.findEnrichedCandidatesByAuthorAndTitleLike(
+                            mockAuthor,
+                            normalized
+                    );
+
+                    double best = 0.0;
+                    for (Book c : candidates) {
+                        double score = tokenOverlapScore(mockTitle, c.getTitle());
+                        if (score > best) {
+                            best = score;
+                            donor = c;
+                        }
+                    }
+
+                    if (donor != null) {
+                        String a = normalizeTitleKey(mockTitle);
+                        String b = normalizeTitleKey(donor.getTitle());
+
+                        if (a.equals(b) || a.contains(b) || b.contains(a) || best >= 0.45) {
+                            log.info("scan.preview.mock.donor.hit donorId={} score={} a='{}' b='{}'",
+                                    donor.getId(), best, a, b);
+
+                            return new ScanPreviewResponse(
+                                    null,
+                                    mockTitle,
+                                    mockAuthor,
+                                    null,
+                                    donor.getDescription(),
+                                    parseTags(donor.getTags()),
+                                    1.0,
+                                    false
+                            );
+                        }
+                    }
                 }
 
+                return new ScanPreviewResponse(
+                        null,
+                        mockTitle,
+                        mockAuthor,
+                        null,
+                        "Descrizione mock in italiano per test senza Gemini.",
+                        List.of("manga", "avventura", "combattimento"),
+                        1.0,
+                        false
+                );
+            }
+
+            if (notBlank(titleHint) && notBlank(authorHint)) {
+                book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(
+                        titleHint.trim(),
+                        authorHint.trim()
+                ).orElse(null);
+
                 if (book != null && notBlank(book.getDescription())) {
-                    ensureUserBook(userKey, book);
+                    log.info("scan.preview.hint.hit userKey={} bookId={} elapsedMs={}",
+                            userKey, book.getId(), System.currentTimeMillis() - t0);
 
-                    log.info("scan.dedup.hit userKey={} bookId={} reason={} elapsedMs={}",
-                            userKey, book.getId(), "hint:title+author",
-                            (System.currentTimeMillis() - t0));
-
-                    return new ScanResponse(
+                    return new ScanPreviewResponse(
                             book.getId(),
                             book.getTitle(),
                             book.getAuthor(),
                             blobStorageService.generateReadSasUrl(book.getCoverUrl()),
                             book.getDescription(),
-                            parseTags(book.getTags())
+                            parseTags(book.getTags()),
+                            1.0,
+                            true
                     );
                 }
             }
 
-            // 2) EXTRACT (1 chiamata) solo se non ho già trovato un book arricchito
-            log.info("scan.gemini.extract.call userKey={} model={}", userKey, model());
+            log.info("scan.preview.gemini.extract.call userKey={} model={}", userKey, model());
             GeminiExtractDto extract = callExtractWithMaxRetry(mimeType, base64, 1);
 
             String extractedTitle = pickBest(titleHint, extract.title());
             String extractedAuthor = pickBest(authorHint, extract.author());
 
-            log.info("scan.extract.done userKey={} title='{}' author='{}' conf={} notes='{}'",
+            log.info("scan.preview.extract.done userKey={} title='{}' author='{}' conf={} notes='{}'",
                     userKey, extractedTitle, extractedAuthor, extract.confidence(), extract.notes());
 
             String nt = normalizeTitle(extractedTitle);
 
             if (notBlank(extractedTitle) && notBlank(extractedAuthor)) {
-                book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(extractedTitle.trim(), extractedAuthor.trim())
-                        .orElse(null);
-                log.info("scan.lookup.extract.title_author userKey={} hit={}",
-                        userKey, (book != null));
+                book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(
+                        extractedTitle.trim(),
+                        extractedAuthor.trim()
+                ).orElse(null);
             } else if (nt != null) {
-                // fallback dedup senza autore
                 List<Book> candidates = bookRepository.findByNormalizedTitle(nt);
                 if (!candidates.isEmpty()) book = candidates.getFirst();
-                log.info("scan.lookup.extract.normalized userKey={} nt='{}' candidates={} hit={}",
-                        userKey, nt, (candidates != null ? candidates.size() : 0), (book != null));
-            } else {
-                log.info("scan.lookup.extract.skip userKey={} reason=no-title", userKey);
             }
 
             if (book != null && notBlank(book.getDescription())) {
-                ensureUserBook(userKey, book);
+                log.info("scan.preview.existing.enriched userKey={} bookId={} elapsedMs={}",
+                        userKey, book.getId(), System.currentTimeMillis() - t0);
 
-                log.info("scan.dedup.hit userKey={} bookId={} reason={} elapsedMs={}",
-                        userKey, book.getId(), "extract:title+author|normalizedTitle",
-                        (System.currentTimeMillis() - t0));
-
-                return new ScanResponse(
+                return new ScanPreviewResponse(
                         book.getId(),
                         book.getTitle(),
                         book.getAuthor(),
                         blobStorageService.generateReadSasUrl(book.getCoverUrl()),
                         book.getDescription(),
-                        parseTags(book.getTags())
+                        parseTags(book.getTags()),
+                        extract.confidence(),
+                        true
                 );
             }
 
-            // 3) Upload cover solo se devo creare/aggiornare
-            String coverUrl = blobStorageService.upload(image);
-            log.info("scan.blob.uploaded userKey={} coverUrl={}", userKey, coverUrl);
+            String previewTitle = notBlank(extractedTitle) ? extractedTitle.trim() : "Titolo non riconosciuto";
+            String previewAuthor = notBlank(extractedAuthor) ? extractedAuthor.trim() : null;
+            String previewDescription = null;
+            List<String> previewTags = List.of();
+
+            Book donor = null;
+
+            if (notBlank(previewAuthor) && notBlank(previewTitle)) {
+                String normalized = normalizeTitleKey(previewTitle);
+
+                log.info("DONOR SEARCH normalized='{}' original='{}' author='{}'",
+                        normalized, previewTitle, previewAuthor);
+
+                List<Book> candidates = bookRepository.findEnrichedCandidatesByAuthorAndTitleLike(
+                        previewAuthor,
+                        normalized
+                );
+
+                double best = 0.0;
+                for (Book c : candidates) {
+                    double score = tokenOverlapScore(previewTitle, c.getTitle());
+                    if (score > best) {
+                        best = score;
+                        donor = c;
+                    }
+                }
+
+                if (donor != null) {
+                    String a = normalizeTitleKey(previewTitle);
+                    String b = normalizeTitleKey(donor.getTitle());
+
+                    if (a.equals(b) || a.contains(b) || b.contains(a) || best >= 0.45) {
+                        previewDescription = donor.getDescription();
+                        previewTags = parseTags(donor.getTags());
+
+                        if (!notBlank(previewAuthor) && notBlank(donor.getAuthor())) {
+                            previewAuthor = donor.getAuthor();
+                        }
+
+                        log.info("scan.preview.donor.author.hit userKey={} donorId={} score={} elapsedMs={}",
+                                userKey, donor.getId(), best, System.currentTimeMillis() - t0);
+
+                        return new ScanPreviewResponse(
+                                book != null ? book.getId() : null,
+                                previewTitle,
+                                previewAuthor,
+                                book != null ? blobStorageService.generateReadSasUrl(book.getCoverUrl()) : null,
+                                previewDescription,
+                                previewTags,
+                                extract.confidence(),
+                                book != null
+                        );
+                    }
+                }
+            }
+
+            if (donor == null && notBlank(previewTitle)) {
+                List<Book> all = bookRepository.search(previewTitle);
+                double best = 0.0;
+
+                for (Book c : all) {
+                    if (!notBlank(c.getDescription())) continue;
+
+                    double score = tokenOverlapScore(previewTitle, c.getTitle());
+                    if (score > best) {
+                        best = score;
+                        donor = c;
+                    }
+                }
+
+                if (donor != null && best >= 0.65) {
+                    previewDescription = donor.getDescription();
+                    previewTags = parseTags(donor.getTags());
+
+                    if (!notBlank(previewAuthor) && notBlank(donor.getAuthor())) {
+                        previewAuthor = donor.getAuthor();
+                    }
+
+                    log.info("scan.preview.donor.title.hit userKey={} donorId={} score={} elapsedMs={}",
+                            userKey, donor.getId(), best, System.currentTimeMillis() - t0);
+
+                    return new ScanPreviewResponse(
+                            book != null ? book.getId() : null,
+                            previewTitle,
+                            previewAuthor,
+                            book != null ? blobStorageService.generateReadSasUrl(book.getCoverUrl()) : null,
+                            previewDescription,
+                            previewTags,
+                            extract.confidence(),
+                            book != null
+                    );
+                }
+            }
+
+            log.info("scan.preview.gemini.enrich.call userKey={} title='{}' author='{}'",
+                    userKey, previewTitle, previewAuthor);
+
+            GeminiEnrichDto enrich = callEnrichWithMaxRetry(
+                    mimeType,
+                    base64,
+                    previewTitle,
+                    notBlank(previewAuthor) ? previewAuthor : "",
+                    1
+            );
+
+            if (notBlank(enrich.author())) {
+                previewAuthor = enrich.author().trim();
+            }
+
+            previewDescription = enrich.description();
+            previewTags = enrich.tags() != null ? enrich.tags() : List.of();
+
+            log.info("scan.preview.done userKey={} matchedBookId={} elapsedMs={}",
+                    userKey,
+                    book != null ? book.getId() : null,
+                    System.currentTimeMillis() - t0);
+
+            return new ScanPreviewResponse(
+                    book != null ? book.getId() : null,
+                    previewTitle,
+                    previewAuthor,
+                    book != null ? blobStorageService.generateReadSasUrl(book.getCoverUrl()) : null,
+                    previewDescription,
+                    previewTags,
+                    extract.confidence(),
+                    book != null
+            );
+
+        } catch (Exception e) {
+            log.error("scan.preview.fail userKey={} msg={} elapsedMs={}",
+                    userKey, e.getMessage(), System.currentTimeMillis() - t0, e);
+            throw e;
+        }
+    }
+
+    public ScanResponse confirm(
+            MultipartFile image,
+            ScanConfirmRequest req,
+            String userKey
+    ) throws Exception {
+        long t0 = System.currentTimeMillis();
+
+        try {
+            if (image == null || image.isEmpty()) throw new IllegalArgumentException("Image is required");
+            if (userKey == null || userKey.isBlank()) throw new IllegalArgumentException("Not authenticated");
+            if (req == null || !notBlank(req.canonicalTitle())) throw new IllegalArgumentException("Canonical title is required");
+
+            log.info("scan.confirm.start userKey={} matchedBookId={} title='{}' author='{}' filename={} size={}",
+                    userKey, req.matchedBookId(), req.canonicalTitle(), req.canonicalAuthor(),
+                    image.getOriginalFilename(), image.getSize());
+
+            Book book = null;
+
+            if (req.matchedBookId() != null) {
+                book = bookRepository.findById(req.matchedBookId()).orElse(null);
+            }
+
+            if (book == null && notBlank(req.canonicalTitle()) && notBlank(req.canonicalAuthor())) {
+                book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(
+                        req.canonicalTitle().trim(),
+                        req.canonicalAuthor().trim()
+                ).orElse(null);
+            }
 
             if (book == null) {
-                // creo entry minima “globale”
-                book = bookRepository.save(Book.builder()
-                        .normalizedTitle(normalizeTitle(extractedTitle))
-                        .title(notBlank(extractedTitle) ? extractedTitle.trim() : "UNKNOWN_TITLE")
-                        .author(notBlank(extractedAuthor) ? extractedAuthor.trim() : null)
+                String nt = normalizeTitle(req.canonicalTitle());
+                if (nt != null) {
+                    List<Book> candidates = bookRepository.findByNormalizedTitle(nt);
+                    if (!candidates.isEmpty()) book = candidates.getFirst();
+                }
+            }
+
+            String coverUrl = null;
+
+            if (book == null || !notBlank(book.getCoverUrl())) {
+                coverUrl = blobStorageService.upload(image);
+                log.info("scan.confirm.blob.uploaded userKey={} coverUrl={}", userKey, coverUrl);
+            }
+
+            if (book == null) {
+                book = Book.builder()
+                        .title(req.canonicalTitle().trim())
+                        .normalizedTitle(normalizeTitle(req.canonicalTitle()))
+                        .author(notBlank(req.canonicalAuthor()) ? req.canonicalAuthor().trim() : null)
                         .coverUrl(coverUrl)
-                        .build());
+                        .description(req.canonicalDescription())
+                        .tags(normalizeTagsJson(req.canonicalTagsJson()))
+                        .build();
 
-                log.info("scan.book.created bookId={} title='{}' author='{}'",
+                book = bookRepository.save(book);
+
+                log.info("scan.confirm.book.created bookId={} title='{}' author='{}'",
                         book.getId(), book.getTitle(), book.getAuthor());
-            } else if (blobStorageService.generateReadSasUrl(book.getCoverUrl()) == null) {
-                book.setCoverUrl(coverUrl);
-                book = bookRepository.save(book);
 
-                log.info("scan.book.cover.updated bookId={} coverUrl={}",
-                        book.getId(), blobStorageService.generateReadSasUrl(book.getCoverUrl()));
             } else {
-                log.info("scan.book.exists bookId={} hasDesc={}",
-                        book.getId(), notBlank(book.getDescription()));
-            }
+                /*
+                 * Libro già esistente.
+                 * Non sovrascriviamo aggressivamente titolo/autore globali,
+                 * perché il Book è globale e potrebbe essere già usato da altri utenti.
+                 * Aggiorniamo solo campi mancanti.
+                 */
 
-            // 4) PROVO PRIMA “COPY” DA UN LIBRO SIMILE GIA' ARRICCHITO (evita chiamata Gemini enrich)
-            if (!notBlank(book.getDescription())) {
-
-                Book donor = null;
-
-                // Caso 1: autore noto -> cerco candidati arricchiti con stesso autore
-                if (notBlank(extractedAuthor) && notBlank(extractedTitle)) {
-                    List<Book> candidates = bookRepository.findEnrichedCandidatesByAuthorAndTitleLike(
-                            extractedAuthor.trim(),
-                            extractedTitle.trim()
-                    );
-
-                    double best = 0.0;
-                    for (Book c : candidates) {
-                        double score = tokenOverlapScore(extractedTitle, c.getTitle());
-                        if (score > best) {
-                            best = score;
-                            donor = c;
-                        }
-                    }
-
-                    // soglia “alta”: se vuoi più permissivo metti 0.6
-                    if (donor != null && best >= 0.75) {
-                        book.setDescription(donor.getDescription());
-                        book.setTags(donor.getTags());
-
-                        // se autore estratto manca ma donor ce l'ha, lo copio
-                        if (!notBlank(book.getAuthor()) && notBlank(donor.getAuthor())) {
-                            book.setAuthor(donor.getAuthor());
-                        }
-
-                        book = bookRepository.save(book);
-                        ensureUserBook(userKey, book);
-                        return new ScanResponse(
-                                book.getId(),
-                                book.getTitle(),
-                                book.getAuthor(),
-                                blobStorageService.generateReadSasUrl(book.getCoverUrl()),
-                                book.getDescription(),
-                                parseTags(book.getTags())
-                        );
-                    }
+                if (!notBlank(book.getCoverUrl()) && notBlank(coverUrl)) {
+                    book.setCoverUrl(coverUrl);
                 }
 
-                // Caso 2: autore mancante -> provo una ricerca “soft” solo sul titolo tra libri arricchiti
-                if (donor == null && notBlank(extractedTitle)) {
-                    List<Book> all = bookRepository.search(extractedTitle.trim());
-                    double best = 0.0;
-                    for (Book c : all) {
-                        if (!notBlank(c.getDescription())) continue;
-                        double score = tokenOverlapScore(extractedTitle, c.getTitle());
-                        if (score > best) {
-                            best = score;
-                            donor = c;
-                        }
-                    }
-
-                    if (donor != null && best >= 0.85) { // più alto perché autore non conferma
-                        book.setDescription(donor.getDescription());
-                        book.setTags(donor.getTags());
-
-                        if (!notBlank(book.getAuthor()) && notBlank(donor.getAuthor())) {
-                            book.setAuthor(donor.getAuthor());
-                        }
-
-                        book = bookRepository.save(book);
-                        ensureUserBook(userKey, book);
-                        return new ScanResponse(
-                                book.getId(),
-                                book.getTitle(),
-                                book.getAuthor(),
-                                blobStorageService.generateReadSasUrl(book.getCoverUrl()),
-                                book.getDescription(),
-                                parseTags(book.getTags())
-                        );
-                    }
+                if (!notBlank(book.getAuthor()) && notBlank(req.canonicalAuthor())) {
+                    book.setAuthor(req.canonicalAuthor().trim());
                 }
 
-                // 4B) se non ho donor valido, chiamo Gemini per ARRICCHIRE
-                String t = notBlank(extractedTitle) ? extractedTitle : "Titolo non riconosciuto";
-                String a = notBlank(extractedAuthor) ? extractedAuthor : "";
+                if (!notBlank(book.getDescription()) && notBlank(req.canonicalDescription())) {
+                    book.setDescription(req.canonicalDescription());
+                }
 
-                GeminiEnrichDto enrich = callEnrichWithMaxRetry(mimeType, base64, t, a, 1);
+                if (!notBlank(book.getTags()) && notBlank(req.canonicalTagsJson())) {
+                    book.setTags(normalizeTagsJson(req.canonicalTagsJson()));
+                }
 
-                // NB: author può essere "unknown" dal prompt
-                if (notBlank(enrich.author())) book.setAuthor(enrich.author().trim());
-                book.setDescription(enrich.description());
-                book.setTags(objectMapper.writeValueAsString(enrich.tags()));
+                if (!notBlank(book.getNormalizedTitle())) {
+                    book.setNormalizedTitle(normalizeTitle(book.getTitle()));
+                }
+
                 book = bookRepository.save(book);
+
+                log.info("scan.confirm.book.updated bookId={} hasCover={} hasDesc={}",
+                        book.getId(), notBlank(book.getCoverUrl()), notBlank(book.getDescription()));
             }
 
-            ensureUserBook(userKey, book);
+            ensureUserBookWithCustomMetadata(userKey, book, req);
 
-            log.info("scan.done userKey={} bookId={} elapsedMs={}",
-                    userKey, book.getId(), (System.currentTimeMillis() - t0));
+            log.info("scan.confirm.done userKey={} bookId={} elapsedMs={}",
+                    userKey, book.getId(), System.currentTimeMillis() - t0);
 
             return new ScanResponse(
                     book.getId(),
@@ -250,14 +446,37 @@ public class ScanService {
             );
 
         } catch (Exception e) {
-            log.error("scan.fail userKey={} msg={} elapsedMs={}",
-                    userKey, e.getMessage(), (System.currentTimeMillis() - t0), e);
+            log.error("scan.confirm.fail userKey={} msg={} elapsedMs={}",
+                    userKey, e.getMessage(), System.currentTimeMillis() - t0, e);
             throw e;
+        }
+    }
+
+    private String normalizeTagsJson(String tagsJson) {
+        try {
+            if (!notBlank(tagsJson)) return objectMapper.writeValueAsString(List.of());
+
+            List<String> tags = objectMapper.readValue(
+                    tagsJson,
+                    new TypeReference<List<String>>() {}
+            );
+
+            return objectMapper.writeValueAsString(tags);
+        } catch (Exception e) {
+            try {
+                return objectMapper.writeValueAsString(List.of());
+            } catch (Exception ignored) {
+                return "[]";
+            }
         }
     }
 
     private String model() {
         return env.getProperty("app.gemini.model", "gemini-2.5-flash-lite");
+    }
+
+    private boolean geminiEnabled() {
+        return Boolean.parseBoolean(env.getProperty("app.gemini.enabled", "true"));
     }
 
     private GeminiExtractDto callExtractWithMaxRetry(String mimeType, String base64, int maxRetries) throws Exception {
@@ -392,6 +611,7 @@ public class ScanService {
         String x = s.toLowerCase();
         x = x.replaceAll("[^a-z0-9àèéìòù\\s]", " ");   // toglie punteggiatura
         x = x.replaceAll("\\b(vol(ume)?|tome|tom\\.?|n\\.?|no\\.?|#)\\s*\\d+\\b", " "); // vol 1, n.2 ecc
+        x = x.replaceAll("\\b\\d+\\b", " ");
         x = x.replaceAll("\\b(antologia|edizione|edition|illustrata|integrale|nuova|classici)\\b", " ");
         x = x.replaceAll("\\s+", " ").trim();
         return x;

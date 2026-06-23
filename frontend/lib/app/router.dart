@@ -4,6 +4,8 @@ import '../features/home/home_shell.dart';
 import '../features/home/home_screen.dart';
 import '../features/scan/scan_screen.dart';
 import '../features/auth/profile_screen.dart';
+import '../features/book/book_detail_screen.dart';
+import '../models/user_book_dto.dart';
 
 final router = GoRouter(
   initialLocation: '/home',
@@ -11,6 +13,23 @@ final router = GoRouter(
     ShellRoute(
       builder: (context, state, child) => HomeShell(child: child),
       routes: [
+        GoRoute(
+          path: '/books/:bookId',
+          pageBuilder: (context, state) {
+            final bookId = int.parse(state.pathParameters['bookId']!);
+            final initialBook = state.extra is UserBookDto
+                ? state.extra as UserBookDto
+                : null;
+
+            return _buildTransitionPage(
+              key: state.pageKey,
+              child: BookDetailScreen(
+                bookId: bookId,
+                initialBook: initialBook,
+              ),
+            );
+          },
+        ),
         GoRoute(
           path: '/home',
           pageBuilder: (context, state) => _buildTransitionPage(

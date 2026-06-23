@@ -2,4 +2,7 @@ package com.shelfscanai.dto;
 
 import com.shelfscanai.entity.ReadingStatus;
 
-public record UpdateStatusRequest(ReadingStatus status) {}
+public record UpdateStatusRequest(
+        ReadingStatus status,
+        Integer currentPage
+) {}
