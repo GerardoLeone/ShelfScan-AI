@@ -36,4 +36,15 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     """)
         List<Book> findEnrichedCandidatesByAuthorAndTitleLike(@Param("author") String author,
                                                               @Param("q") String q);
+
+    @Query("""
+       select b from Book b
+       where b.description is not null
+         and (
+              lower(b.title) like lower(concat('%', :q, '%'))
+              or lower(:q) like lower(concat('%', lower(b.title), '%'))
+              or b.normalizedTitle = :q
+         )
+    """)
+        List<Book> findEnrichedCandidatesByTitleLikeNoAuthor(@Param("q") String q);
 }

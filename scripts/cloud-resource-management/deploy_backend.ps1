@@ -29,9 +29,4 @@ if ($LASTEXITCODE -ne 0) {
   throw "Deploy fallito"
 }
 
-Write-Host "Restarting App Service..."
-az webapp restart `
-  --resource-group $rg `
-  --name $app
-
 Write-Host "Deploy completed."

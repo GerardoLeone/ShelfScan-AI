@@ -238,7 +238,7 @@ public class ScanService {
                         previewDescription = donor.getDescription();
                         previewTags = parseTags(donor.getTags());
 
-                        if (!notBlank(previewAuthor) && notBlank(donor.getAuthor())) {
+                        if (notBlank(donor.getAuthor()) && !authorCompatible(previewAuthor, donor.getAuthor())) {
                             previewAuthor = donor.getAuthor();
                         }
 
@@ -260,7 +260,13 @@ public class ScanService {
             }
 
             if (donor == null && notBlank(previewTitle)) {
-                List<Book> all = bookRepository.search(previewTitle);
+                String normalized = normalizeTitleKey(previewTitle);
+
+                log.info("DONOR SEARCH NO AUTHOR normalized='{}' original='{}'",
+                        normalized, previewTitle);
+
+                List<Book> all = bookRepository.findEnrichedCandidatesByTitleLikeNoAuthor(normalized);
+
                 double best = 0.0;
 
                 for (Book c : all) {
@@ -612,7 +618,7 @@ public class ScanService {
         x = x.replaceAll("[^a-z0-9àèéìòù\\s]", " ");   // toglie punteggiatura
         x = x.replaceAll("\\b(vol(ume)?|tome|tom\\.?|n\\.?|no\\.?|#)\\s*\\d+\\b", " "); // vol 1, n.2 ecc
         x = x.replaceAll("\\b\\d+\\b", " ");
-        x = x.replaceAll("\\b(antologia|edizione|edition|illustrata|integrale|nuova|classici)\\b", " ");
+        x = x.replaceAll("\\b(antologia|edizione|edition|illustrata|integrale|nuova|classici|sd)\\b", " ");
         x = x.replaceAll("\\s+", " ").trim();
         return x;
     }
