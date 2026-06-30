@@ -381,6 +381,7 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
                       book: book,
                       saving: _saving,
                       onStatusTap: _openStatusPicker,
+                      onBookmarkTap: () => _changeStatus('READING'),
                     ),
                 ],
               ),
@@ -396,11 +397,13 @@ class _ReadView extends StatelessWidget {
   final UserBookDto book;
   final bool saving;
   final VoidCallback onStatusTap;
+  final VoidCallback onBookmarkTap;
 
   const _ReadView({
     required this.book,
     required this.saving,
     required this.onStatusTap,
+    required this.onBookmarkTap,
   });
 
   String get _statusLabel {
@@ -494,24 +497,34 @@ class _ReadView extends StatelessWidget {
         ),
         if (book.status == 'READING' && book.currentPage != null) ...[
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.bookmark_rounded, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Pagina ${book.currentPage}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+          InkWell(
+            onTap: saving ? null : onBookmarkTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.bookmark_rounded, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Pagina ${book.currentPage}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.edit_rounded,
+                    size: 16,
+                    color: cs.onPrimaryContainer.withValues(alpha: 0.75),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/library/library_provider.dart';
 import 'package:frontend/models/user_book_dto.dart';
 import '../../auth/auth_controller.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -13,7 +14,22 @@ class ProfileScreen extends ConsumerWidget {
     final libraryAsync = ref.watch(libraryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profilo')),
+      appBar: AppBar(
+        title: const Text('Profilo'),
+        actions: [
+          IconButton(
+            tooltip: 'Logout',
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () async {
+              await ref.read(authControllerProvider.notifier).logout();
+
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+          ),
+        ],
+      ),
       body: libraryAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Errore: $e')),

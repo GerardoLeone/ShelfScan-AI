@@ -93,4 +93,27 @@ class AuthRepository {
     await _storage.delete(key: _cookieKey);
     await CookieManager.instance().deleteAllCookies();
   }
+
+  Future<bool> refreshSession() async {
+    final cookie = await getCookieHeader();
+    if (cookie == null || cookie.isEmpty) return false;
+
+    try {
+      final dio = Dio();
+
+      final response = await dio.get(
+        '$baseUrl/.auth/refresh',
+        options: Options(
+          headers: {
+            'Cookie': cookie,
+          },
+          validateStatus: (_) => true,
+        ),
+      );
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/auth/auth_repository.dart';
 import 'package:frontend/auth/auth_state.dart';
@@ -30,14 +31,48 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = const AsyncLoading();
 
     final repo = ref.read(authRepositoryProvider);
-    final authenticated = await repo.isAuthenticated();
+
+    debugPrint('AUTH: check /.auth/me');
+
+    bool authenticated = await repo.isAuthenticated();
+
+    debugPrint('AUTH: isAuthenticated = $authenticated');
 
     if (!authenticated) {
+      debugPrint('AUTH: try /.auth/refresh');
+
+      final refreshed = await repo.refreshSession();
+
+      debugPrint('AUTH: refresh result = $refreshed');
+
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    for (int i = 0; i < 5; i++) {
+      debugPrint('AUTH: retry ${i + 1}');
+
+      authenticated = await repo.isAuthenticated();
+
+      debugPrint('AUTH: authenticated = $authenticated');
+
+      if (authenticated) {
+        break;
+      }
+
+      if (i < 4) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+
+    if (!authenticated) {
+      debugPrint('AUTH: FAILED');
       state = const AsyncData(AuthState.unauthenticated());
       return;
     }
 
     final userName = await repo.getUserName();
+
+    debugPrint('AUTH: SUCCESS user=$userName');
 
     state = AsyncData(
       AuthState.authenticated(userName: userName),
