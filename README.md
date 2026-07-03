@@ -163,7 +163,7 @@ L'app non tratta la risposta AI come definitiva. Il risultato viene mostrato all
 
 ### 5. Confirm
 
-Dopo la preview, l'utente può modificare titolo, autore, descrizione e tag. Quando conferma, il frontend invia i dati a:
+Dopo la preview, l'utente può modificare titolo e tag. Quando conferma, il frontend invia i dati a:
 
 ```http
 POST /api/scan/confirm
