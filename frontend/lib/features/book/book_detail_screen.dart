@@ -26,8 +26,6 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
   String? _error;
 
   final _title = TextEditingController();
-  final _author = TextEditingController();
-  final _description = TextEditingController();
   final _tags = TextEditingController();
 
   @override
@@ -40,8 +38,6 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
   @override
   void dispose() {
     _title.dispose();
-    _author.dispose();
-    _description.dispose();
     _tags.dispose();
     super.dispose();
   }
@@ -63,8 +59,6 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
       setState(() {
         _book = book;
         _title.text = book.title;
-        _author.text = book.author;
-        _description.text = book.description;
         _tags.text = book.tags.join(', ');
       });
     } catch (e) {
@@ -626,10 +620,23 @@ class _EditForm extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            'Puoi personalizzare titolo e tag per la tua libreria. Autore e descrizione restano dati del catalogo globale.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        const SizedBox(height: 12),
         TextField(
           controller: title,
           decoration: const InputDecoration(
-            labelText: 'Titolo',
+            labelText: 'Titolo personale',
             border: OutlineInputBorder(),
           ),
         ),
@@ -637,7 +644,7 @@ class _EditForm extends StatelessWidget {
         TextField(
           controller: tags,
           decoration: const InputDecoration(
-            labelText: 'Tag',
+            labelText: 'Tag personali',
             helperText: 'Separali con una virgola',
             border: OutlineInputBorder(),
           ),

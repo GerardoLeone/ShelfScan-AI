@@ -19,8 +19,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   final ImagePicker _picker = ImagePicker();
 
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _authorController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
 
   File? _selectedImage;
@@ -33,8 +31,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   void dispose() {
     _titleController.dispose();
-    _authorController.dispose();
-    _descriptionController.dispose();
     _tagsController.dispose();
     super.dispose();
   }
@@ -55,8 +51,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _result = null;
       _error = null;
       _titleController.clear();
-      _authorController.clear();
-      _descriptionController.clear();
       _tagsController.clear();
     });
   }
@@ -81,8 +75,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       setState(() {
         _preview = preview;
         _titleController.text = preview.title;
-        _authorController.text = preview.author;
-        _descriptionController.text = preview.description;
         _tagsController.text = preview.tags.join(', ');
       });
     } on DioException catch (e) {
@@ -188,8 +180,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       _result = null;
       _error = null;
       _titleController.clear();
-      _authorController.clear();
-      _descriptionController.clear();
       _tagsController.clear();
     });
   }
@@ -266,8 +256,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             const SizedBox(height: 20),
             _PreviewEditor(
               titleController: _titleController,
-              authorController: _authorController,
-              descriptionController: _descriptionController,
               tagsController: _tagsController,
               preview: _preview!,
             ),
@@ -299,15 +287,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
 class _PreviewEditor extends StatelessWidget {
   final TextEditingController titleController;
-  final TextEditingController authorController;
-  final TextEditingController descriptionController;
   final TextEditingController tagsController;
   final ScanPreviewDto preview;
 
   const _PreviewEditor({
     required this.titleController,
-    required this.authorController,
-    required this.descriptionController,
     required this.tagsController,
     required this.preview,
   });
@@ -333,43 +317,107 @@ class _PreviewEditor extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             preview.existingBook
-                ? 'Libro già presente nel catalogo. Puoi confermare o modificare i dati.'
-                : 'Controlla i dati prima del salvataggio definitivo.',
+                ? 'Libro già presente nel catalogo. Puoi personalizzare titolo e tag per la tua libreria.'
+                : 'Controlla i dati riconosciuti e personalizza titolo e tag prima del salvataggio.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
+
           const SizedBox(height: 16),
+
+          Text(
+            'Personalizzazione libreria',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+
           TextField(
             controller: titleController,
             decoration: const InputDecoration(
-              labelText: 'Titolo',
+              labelText: 'Titolo personale',
+              helperText: 'Salvato solo nella tua libreria',
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: authorController,
-            decoration: const InputDecoration(
-              labelText: 'Autore',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: descriptionController,
-            minLines: 3,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              labelText: 'Descrizione',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
+
           TextField(
             controller: tagsController,
             decoration: const InputDecoration(
-              labelText: 'Tag',
+              labelText: 'Tag personali',
               helperText: 'Separali con una virgola',
               border: OutlineInputBorder(),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          Text(
+            'Dati catalogo globale',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          _ReadOnlyInfoBox(
+            label: 'Autore',
+            value: preview.author.isEmpty
+                ? 'Autore non disponibile'
+                : preview.author,
+          ),
+          const SizedBox(height: 10),
+
+          _ReadOnlyInfoBox(
+            label: 'Descrizione',
+            value: preview.description.isEmpty
+                ? 'Nessuna descrizione disponibile.'
+                : preview.description,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadOnlyInfoBox extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ReadOnlyInfoBox({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: cs.outline.withValues(alpha: 0.14),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: cs.onSurface.withValues(alpha: 0.65),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              height: 1.4,
             ),
           ),
         ],
