@@ -1,7 +1,7 @@
 $rg = "rg-shelfscan-dev"
 $app = "shelfscanai-dev"
 $jarName = "ShelfScan-AI-0.0.1-SNAPSHOT.jar"
-$root = Join-Path $PSScriptRoot "..\.."
+$root = Join-Path $PSScriptRoot "..\..\.."
 
 Set-Location $root
 
