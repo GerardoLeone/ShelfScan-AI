@@ -45,11 +45,11 @@ class LoginScreen extends ConsumerWidget {
                     onPressed: () async {
                       final result = await Navigator.of(context).push<bool>(
                         MaterialPageRoute(
-                          builder: (_) => const AuthWebViewScreen(),
+                          builder: (_) => const AuthWebViewScreen(), //Pagina d'accesso
                         ),
                       );
 
-                      if (result == true) {
+                      if (result == true) { //Se l'autenticazione va a buon fine
                         await ref
                             .read(authControllerProvider.notifier)
                             .refreshAuthState();

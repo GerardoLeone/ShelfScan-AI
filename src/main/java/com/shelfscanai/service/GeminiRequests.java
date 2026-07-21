@@ -12,7 +12,7 @@ public class GeminiRequests {
                         Map.of(
                                 "role", "user",
                                 "parts", List.of(
-                                        Map.of("text", Prompts.EXTRACT_PROMPT),
+                                        Map.of("text", Prompts.EXTRACT_PROMPT), // PROMPT!!
                                         Map.of("inline_data", Map.of(
                                                 "mime_type", mimeType,
                                                 "data", base64
@@ -39,7 +39,7 @@ public class GeminiRequests {
     }
 
     public static Map<String, Object> buildEnrichRequest(String mimeType, String base64, String title, String author) {
-        String prompt = Prompts.enrichPrompt(title, author);
+        String prompt = Prompts.enrichPrompt(title, author); //PROMPT
 
         return Map.of(
                 "contents", List.of(

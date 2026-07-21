@@ -29,6 +29,7 @@ public class LibraryController {
     private final BlobStorageService blobStorageService;
     private final ObjectMapper objectMapper;
 
+    //Modifica soltanto Title e Tags
     @PatchMapping("/library/{bookId}/metadata")
     public ResponseEntity<?> updateLibraryItemMetadata(
             @PathVariable Long bookId,
@@ -39,13 +40,16 @@ public class LibraryController {
         String userKey = easyAuthUserExtractor.getUserKey(principalId, principalName);
         if (userKey == null) return ResponseEntity.status(401).body("Not authenticated");
 
+        //Restituisce USerBook a partire da UserKey e bookId
         UserBook ub = userBookRepository.findByUserKeyAndBook_Id(userKey, bookId).orElse(null);
         if (ub == null) return ResponseEntity.status(404).body("Book not in library");
 
+        //Modifica title
         ub.setCustomTitle(cleanOrNull(req.customTitle()));
 
+        //Modifica tags
         if (req.customTags() != null) {
-            List<String> cleaned = req.customTags()
+            List<String> cleaned = req.customTags() //Pulizia dei tag rimuovendo spazi e tag vuoti, salva poi come JSON
                     .stream()
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
@@ -65,6 +69,7 @@ public class LibraryController {
         return cleaned.isEmpty() ? null : cleaned;
     }
 
+    // Se esiste personale mostra i personali, altrimenti canonici
     private String pick(String personal, String canonical) {
         return personal != null && !personal.isBlank() ? personal : canonical;
     }
@@ -84,15 +89,16 @@ public class LibraryController {
         String userKey = easyAuthUserExtractor.getUserKey(principalId, principalName);
         if (userKey == null) return ResponseEntity.status(401).body("Not authenticated");
 
+        // Recupera solo i libri dell'utente autenticato
         List<LibraryItemResponse> items = userBookRepository.findByUserKeyOrderByUpdatedAtDesc(userKey)
                 .stream()
-                .map(ub -> {
-                    Book book = ub.getBook();
-                    String signedCoverUrl = blobStorageService.generateReadSasUrl(book.getCoverUrl());
+                .map(ub -> { //per ogni UserBook...
+                    Book book = ub.getBook(); //...recupera il GlobalBook collegato
+                    String signedCoverUrl = blobStorageService.generateReadSasUrl(book.getCoverUrl()); //Genera il SAS
 
                     return new LibraryItemResponse(
                             book.getId(),
-                            pick(ub.getCustomTitle(), book.getTitle()),
+                            pick(ub.getCustomTitle(), book.getTitle()), //costruisce la risposta con PICK (se esiste personal, restituisce personal, altrimenti canonical)
                             book.getAuthor(),
                             signedCoverUrl,
                             book.getDescription(),
@@ -139,6 +145,7 @@ public class LibraryController {
         return ResponseEntity.ok().build();
     }
 
+    // CHIAMATA GET sul singolo Id
     @GetMapping("/library/{bookId}")
     public ResponseEntity<?> getLibraryItem(
             @PathVariable Long bookId,
@@ -167,6 +174,8 @@ public class LibraryController {
         ));
     }
 
+    // CHIAMATA POST
+    // Aggiunge un libro esistente alla libreria dell'utente (se esiste già, non crea duplicato)
     @PostMapping("/library/{bookId}")
     public ResponseEntity<?> addToLibrary(
             @PathVariable Long bookId,
@@ -191,6 +200,7 @@ public class LibraryController {
         return ResponseEntity.ok().build();
     }
 
+    // elimina solo UserBook
     @DeleteMapping("/library/{bookId}")
     public ResponseEntity<?> removeFromLibrary(
             @PathVariable Long bookId,

@@ -25,7 +25,7 @@ public class ScanController {
             @RequestPart("image") MultipartFile image,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String author,
-            @RequestHeader(value = "X-MS-CLIENT-PRINCIPAL-ID", required = false) String principalId,
+            @RequestHeader(value = "X-MS-CLIENT-PRINCIPAL-ID", required = false) String principalId,  //HEADER AGGIUNTI DA EASY AUTH
             @RequestHeader(value = "X-MS-CLIENT-PRINCIPAL-NAME", required = false) String principalName
     ) throws Exception {
 

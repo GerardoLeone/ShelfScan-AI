@@ -9,6 +9,7 @@ class UserBookDto {
   final String description;
   final List<String> tags;
 
+  // Rappresenta un libro dentro la libreria personale dell'utente
   const UserBookDto({
     required this.id,
     required this.bookId,

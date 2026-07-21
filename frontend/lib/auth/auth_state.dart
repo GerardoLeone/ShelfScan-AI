@@ -1,3 +1,4 @@
+//STATO LOGICO dell'autenticazione
 class AuthState {
   final bool isAuthenticated;
   final String? userName;

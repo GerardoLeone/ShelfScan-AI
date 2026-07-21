@@ -14,7 +14,13 @@ final shelfScanApiProvider = Provider((ref) {
   return ShelfScanApi(dio);
 });
 
+/*
+ * Essendo un FutureProvider, Riverpod gestisce automaticamente 3 strati:
+ * loading
+ * data
+ * error
+ */
 final libraryProvider = FutureProvider<List<UserBookDto>>((ref) async {
   final api = ref.read(shelfScanApiProvider);
-  return api.getLibrary();
+  return api.getLibrary(); //get di tutti i libri
 });

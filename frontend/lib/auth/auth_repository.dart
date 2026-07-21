@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+// Operazioni concrete verso Azure e dello storage locale del cookie
 class AuthRepository {
   static const String baseUrl =
       'https://shelfscanai-dev-hqdnaphzd7emfff8.francecentral-01.azurewebsites.net';

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:frontend/models/user_book_dto.dart';
 
+// Usa il client HTTP Dio per chiamare gli endpoint REST
 class ShelfScanApi {
   ShelfScanApi(this._dio);
 
@@ -67,11 +68,13 @@ class ShelfScanApi {
     throw Exception('Formato risposta /api/library non valido');
   }
 
+  // Analizza la copertina e restituisce un'anteprima.
+  // Il libro non viene ancora inserito nella libreria.
   Future<ScanPreviewDto> previewScan(File imageFile) async {
     final fileName = imageFile.path.split('/').last;
 
     final formData = FormData.fromMap({
-      'image': await MultipartFile.fromFile(
+      'image': await MultipartFile.fromFile( //usa multipart perchè la richiesta contiene un file binario
         imageFile.path,
         filename: fileName,
       ),
@@ -92,6 +95,7 @@ class ShelfScanApi {
     throw Exception('Formato risposta /api/scan/preview non valido');
   }
 
+  // Conferma l'inserimento dopo la revisione dell'utente.
   Future<UserBookDto> confirmScan({
     required File imageFile,
     required ScanPreviewDto preview,
@@ -107,11 +111,13 @@ class ShelfScanApi {
       ),
       if (preview.matchedBookId != null) 'matchedBookId': preview.matchedBookId,
 
+      //canonical
       'canonicalTitle': preview.title,
       if (preview.author.trim().isNotEmpty) 'canonicalAuthor': preview.author.trim(),
       if (preview.description.trim().isNotEmpty) 'canonicalDescription': preview.description.trim(),
       'canonicalTagsJson': jsonEncode(preview.tags),
 
+      //customs
       if (customTitle.trim().isNotEmpty) 'customTitle': customTitle.trim(),
       'customTagsJson': jsonEncode(customTags),
     });
@@ -132,6 +138,7 @@ class ShelfScanApi {
   }
 }
 
+// Rappresenta la risposta della preview
 class ScanPreviewDto {
   final int? matchedBookId;
   final String title;
@@ -155,14 +162,14 @@ class ScanPreviewDto {
 
   factory ScanPreviewDto.fromJson(Map<String, dynamic> json) {
     return ScanPreviewDto(
-      matchedBookId: _asNullableInt(json['matchedBookId']),
+      matchedBookId: _asNullableInt(json['matchedBookId']), //Identificativo del libro matched
       title: _asString(json['title']),
       author: _asString(json['author']),
       coverUrl: _asNullableString(json['coverUrl']),
       description: _asString(json['description']),
       tags: _asStringList(json['tags']),
       confidence: _asDouble(json['confidence']),
-      existingBook: json['existingBook'] == true,
+      existingBook: json['existingBook'] == true, //Se il libro è già presente nel database (utile alla UI)
     );
   }
 

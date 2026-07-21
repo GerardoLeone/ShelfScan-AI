@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/auth/auth_repository.dart';
 import 'package:frontend/auth/auth_state.dart';
 
+//Rende disponibile l'istanza di AuthRepository tramite Riverpod
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository();
 });
@@ -27,6 +28,9 @@ class AuthController extends AsyncNotifier<AuthState> {
     );
   }
 
+  //Dopo aver completato il login refresh della pagina
+  // Easy Auth può impiegare un breve intervallo per rendere disponibile
+  // la nuova sessione dopo il login nella WebView, quindi riprova /.auth/me.
   Future<void> refreshAuthState() async {
     state = const AsyncLoading();
 

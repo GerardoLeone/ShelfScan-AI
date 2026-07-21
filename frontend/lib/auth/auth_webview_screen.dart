@@ -11,11 +11,11 @@ class AuthWebViewScreen extends ConsumerStatefulWidget {
   ConsumerState<AuthWebViewScreen> createState() => _AuthWebViewScreenState();
 }
 
-class _AuthWebViewScreenState extends ConsumerState<AuthWebViewScreen> {
+class _AuthWebViewScreenState extends ConsumerState<AuthWebViewScreen> { //fornisce automaticamente ref tramite Riverpod
   bool _completed = false;
 
-  static const String _loginUrl =
-      '${AuthRepository.baseUrl}/.auth/login/aad?post_login_redirect_uri=/';
+  static const String _loginUrl = //ENDPOINT Easy Auth
+      '${AuthRepository.baseUrl}/.auth/login/aad?post_login_redirect_uri=/'; //torna alla root alla fine del login. aad indica il provider Microsoft Entra ID (prima si chiamava Azure Active Directory)
 
   Future<void> _tryCompleteLogin() async {
     if (_completed) return;
@@ -26,15 +26,15 @@ class _AuthWebViewScreenState extends ConsumerState<AuthWebViewScreen> {
 
     final sessionCookie = cookies
         .where((cookie) => cookie.name == 'AppServiceAuthSession')
-        .firstOrNull;
+        .firstOrNull; //cerca il cookie di sessione
 
     if (sessionCookie == null || sessionCookie.value.isEmpty) return;
 
     _completed = true;
 
     await ref
-        .read(authRepositoryProvider)
-        .saveSessionCookie(sessionCookie.value);
+        .read(authRepositoryProvider) //leggi authRepositoryProvider, restituisce AuthRepository()
+        .saveSessionCookie(sessionCookie.value); //salva il cookie nel Secure Storage
 
     if (!mounted) return;
     Navigator.of(context).pop(true);

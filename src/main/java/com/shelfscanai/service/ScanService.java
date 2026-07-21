@@ -23,21 +23,22 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScanService {
 
-    private final BlobStorageService blobStorageService;
+    private final BlobStorageService blobStorageService; // Upload copertina e SAS
     private final BookRepository bookRepository;
     private final UserBookRepository userBookRepository;
     private final GeminiClient geminiClient;
-    private final ObjectMapper objectMapper;
-    private final Environment env;
+    private final ObjectMapper objectMapper; //conversione JSON
+    private final Environment env; //lettura configurazione
 
     private void ensureUserBookWithCustomMetadata(
             String userKey,
             Book book,
             ScanConfirmRequest req
     ) throws Exception {
-        UserBook ub = userBookRepository.findByUserKeyAndBook_Id(userKey, book.getId())
+        UserBook ub = userBookRepository.findByUserKeyAndBook_Id(userKey, book.getId()) //Prima cerca
                 .orElse(null);
 
+        //Se non esiste già, crea
         if (ub == null) {
             ub = UserBook.builder()
                     .userKey(userKey)
@@ -49,7 +50,7 @@ public class ScanService {
         ub.setCustomTitle(cleanOrNull(req.customTitle()));
         ub.setCustomTags(normalizeTagsJson(req.customTagsJson()));
 
-        userBookRepository.save(ub);
+        userBookRepository.save(ub); //salva
 
         log.info("userbook.upsert.custom userKey={} bookId={}", userKey, book.getId());
     }
@@ -60,6 +61,7 @@ public class ScanService {
         return cleaned.isEmpty() ? null : cleaned;
     }
 
+    // validazione, extract con Gemini, ricerca libro esistente, ricerca donor, eventuale enrich, risposta di anteprima.
     public ScanPreviewResponse preview(
             MultipartFile image,
             String titleHint,
@@ -102,9 +104,9 @@ public class ScanService {
                     );
 
                     double best = 0.0;
-                    for (Book c : candidates) {
+                    for (Book c : candidates) { //scorre i candidati
                         double score = tokenOverlapScore(mockTitle, c.getTitle());
-                        if (score > best) {
+                        if (score > best) { //prende quello con score migliore
                             best = score;
                             donor = c;
                         }
@@ -144,6 +146,8 @@ public class ScanService {
                 );
             }
 
+            //Utilizzato per TESTING (sono sempre vuoti perchè siamo ancora all'inizio)!
+            //Se trova un libro con descrizione e titolo già presente, lo restituisce come preview evitando la call Gemini
             if (notBlank(titleHint) && notBlank(authorHint)) {
                 book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(
                         titleHint.trim(),
@@ -167,6 +171,7 @@ public class ScanService {
                 }
             }
 
+            // Enrich di Gemini!
             log.info("scan.preview.gemini.extract.call userKey={} model={}", userKey, model());
             GeminiExtractDto extract = callExtractWithMaxRetry(mimeType, base64, 1);
 
@@ -176,19 +181,21 @@ public class ScanService {
             log.info("scan.preview.extract.done userKey={} title='{}' author='{}' conf={} notes='{}'",
                     userKey, extractedTitle, extractedAuthor, extract.confidence(), extract.notes());
 
+            //normalizza il titolo
             String nt = normalizeTitle(extractedTitle);
 
+            //se titolo e autore non vuoti, prova il MATCH ESATTO!
             if (notBlank(extractedTitle) && notBlank(extractedAuthor)) {
                 book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(
                         extractedTitle.trim(),
                         extractedAuthor.trim()
                 ).orElse(null);
-            } else if (nt != null) {
+            } else if (nt != null) { // Se autore o titolo non sono completi prova con il titolo normalizzato
                 List<Book> candidates = bookRepository.findByNormalizedTitle(nt);
                 if (!candidates.isEmpty()) book = candidates.getFirst();
             }
 
-            if (book != null && notBlank(book.getDescription())) {
+            if (book != null && notBlank(book.getDescription())) { //Se ha trovato qualcosa, la restituisce ora
                 log.info("scan.preview.existing.enriched userKey={} bookId={} elapsedMs={}",
                         userKey, book.getId(), System.currentTimeMillis() - t0);
 
@@ -204,11 +211,13 @@ public class ScanService {
                 );
             }
 
+            //Modello le stringhe così da evitare problemi tra titoli simili e non
             String previewTitle = notBlank(extractedTitle) ? extractedTitle.trim() : "Titolo non riconosciuto";
             String previewAuthor = notBlank(extractedAuthor) ? extractedAuthor.trim() : null;
             String previewDescription = null;
             List<String> previewTags = List.of();
 
+            //INIZIA RICERCA DONOR
             Book donor = null;
 
             if (notBlank(previewAuthor) && notBlank(previewTitle)) {
@@ -217,24 +226,28 @@ public class ScanService {
                 log.info("DONOR SEARCH normalized='{}' original='{}' author='{}'",
                         normalized, previewTitle, previewAuthor);
 
+                //trova TUTTI i candidati
                 List<Book> candidates = bookRepository.findEnrichedCandidatesByAuthorAndTitleLike(
                         previewAuthor,
                         normalized
                 );
 
+                //Prendo quello con punteggio migliore
                 double best = 0.0;
                 for (Book c : candidates) {
-                    double score = tokenOverlapScore(previewTitle, c.getTitle());
+                    double score = tokenOverlapScore(previewTitle, c.getTitle()); //Jaccard similarity sui token (intersezione dei token / unione dei token)
                     if (score > best) {
                         best = score;
                         donor = c;
                     }
                 }
 
+                //Se ha trovato un DONOR
                 if (donor != null) {
                     String a = normalizeTitleKey(previewTitle);
                     String b = normalizeTitleKey(donor.getTitle());
 
+                    //titoli uguali || titolo contenuto || il punteggio è almeno 0.45 (IMPORTANTE)
                     if (a.equals(b) || a.contains(b) || b.contains(a) || best >= 0.45) {
                         previewDescription = donor.getDescription();
                         previewTags = parseTags(donor.getTags());
@@ -246,6 +259,7 @@ public class ScanService {
                         log.info("scan.preview.donor.author.hit userKey={} donorId={} score={} elapsedMs={}",
                                 userKey, donor.getId(), best, System.currentTimeMillis() - t0);
 
+                        //Restituisce DONOR come preview!
                         return new ScanPreviewResponse(
                                 book != null ? book.getId() : null,
                                 previewTitle,
@@ -260,16 +274,19 @@ public class ScanService {
                 }
             }
 
+            //Se non c'è un DONOR, allora ricerca senza autore (più rischioso, quindi soglia più severa)
             if (donor == null && notBlank(previewTitle)) {
                 String normalized = normalizeTitleKey(previewTitle);
 
                 log.info("DONOR SEARCH NO AUTHOR normalized='{}' original='{}'",
                         normalized, previewTitle);
 
+                // ricerca candidati
                 List<Book> all = bookRepository.findEnrichedCandidatesByTitleLikeNoAuthor(normalized);
 
                 double best = 0.0;
 
+                //miglior punteggio
                 for (Book c : all) {
                     if (!notBlank(c.getDescription())) continue;
 
@@ -280,6 +297,7 @@ public class ScanService {
                     }
                 }
 
+                //se ha trovato un donor o un punteggio >= 0.65
                 if (donor != null && best >= 0.65) {
                     previewDescription = donor.getDescription();
                     previewTags = parseTags(donor.getTags());
@@ -291,6 +309,7 @@ public class ScanService {
                     log.info("scan.preview.donor.title.hit userKey={} donorId={} score={} elapsedMs={}",
                             userKey, donor.getId(), best, System.currentTimeMillis() - t0);
 
+                    //PREVIEW!
                     return new ScanPreviewResponse(
                             book != null ? book.getId() : null,
                             previewTitle,
@@ -303,6 +322,8 @@ public class ScanService {
                     );
                 }
             }
+
+            // FASE DI ENRICHMENT (non ha trovato nulla)!
 
             log.info("scan.preview.gemini.enrich.call userKey={} title='{}' author='{}'",
                     userKey, previewTitle, previewAuthor);
@@ -345,6 +366,7 @@ public class ScanService {
         }
     }
 
+    //Salvataggio definitivo nel DB!
     public ScanResponse confirm(
             MultipartFile image,
             ScanConfirmRequest req,
@@ -363,6 +385,7 @@ public class ScanService {
 
             Book book = null;
 
+            //Per evitare duplicati ricerca il libro
             if (req.matchedBookId() != null) {
                 book = bookRepository.findById(req.matchedBookId()).orElse(null);
             }
@@ -381,15 +404,17 @@ public class ScanService {
                     if (!candidates.isEmpty()) book = candidates.getFirst();
                 }
             }
+            // ============================================================================= fine controllo duplicati
 
             String coverUrl = null;
 
+            // carica l'immagine solo se il libro è nuovo oppure se il libro esistente non ha una copertina
             if (book == null || !notBlank(book.getCoverUrl())) {
                 coverUrl = blobStorageService.upload(image);
                 log.info("scan.confirm.blob.uploaded userKey={} coverUrl={}", userKey, coverUrl);
             }
 
-            if (book == null) {
+            if (book == null) { //Se il libro non esiste lo crea da zero...
                 book = Book.builder()
                         .title(req.canonicalTitle().trim())
                         .normalizedTitle(normalizeTitle(req.canonicalTitle()))
@@ -399,7 +424,7 @@ public class ScanService {
                         .tags(normalizeTagsJson(req.canonicalTagsJson()))
                         .build();
 
-                book = bookRepository.save(book);
+                book = bookRepository.save(book); //... e lo salva
 
                 log.info("scan.confirm.book.created bookId={} title='{}' author='{}'",
                         book.getId(), book.getTitle(), book.getAuthor());
@@ -438,7 +463,7 @@ public class ScanService {
                         book.getId(), notBlank(book.getCoverUrl()), notBlank(book.getDescription()));
             }
 
-            ensureUserBookWithCustomMetadata(userKey, book, req);
+            ensureUserBookWithCustomMetadata(userKey, book, req); // questa funzione gestisce l'associazione personale
 
             log.info("scan.confirm.done userKey={} bookId={} elapsedMs={}",
                     userKey, book.getId(), System.currentTimeMillis() - t0);
@@ -489,11 +514,11 @@ public class ScanService {
     private GeminiExtractDto callExtractWithMaxRetry(String mimeType, String base64, int maxRetries) throws Exception {
         try {
             String model = model();
-            var req = GeminiRequests.buildExtractRequest(mimeType, base64);
+            var req = GeminiRequests.buildExtractRequest(mimeType, base64); //creo la richiesta JSON
 
             log.info("gemini.extract.call model={}", model);
 
-            var resp = geminiClient.generateContent(model, req).block();
+            var resp = geminiClient.generateContent(model, req).block(); //genero contenuto
             String json = firstText(resp);
 
             log.debug("gemini.extract.rawJson {}", json);
@@ -501,7 +526,7 @@ public class ScanService {
             return objectMapper.readValue(json, GeminiExtractDto.class);
 
         } catch (Exception e) {
-            String message = cleanGeminiError(e);
+            String message = cleanGeminiError(e); //gestione eccezioni Gemini
             log.warn("gemini.extract.fail msg={}", message, e);
             throw new GeminiScanException(message);
         }
@@ -521,15 +546,15 @@ public class ScanService {
             log.info("gemini.enrich.call model={} title='{}' author='{}'",
                     model, title, author);
 
-            var resp = geminiClient.generateContent(model, req).block();
+            var resp = geminiClient.generateContent(model, req).block();//creo la richiesta JSON
             String json = firstText(resp);
 
             log.debug("gemini.enrich.rawJson {}", json);
 
-            return objectMapper.readValue(json, GeminiEnrichDto.class);
+            return objectMapper.readValue(json, GeminiEnrichDto.class); //genero contenuto
 
         } catch (Exception e) {
-            String message = cleanGeminiError(e);
+            String message = cleanGeminiError(e); //gestione eccezioni Gemini
             log.warn("gemini.enrich.fail msg={}", message, e);
             throw new GeminiScanException(message);
         }
@@ -612,21 +637,39 @@ public class ScanService {
         return x;
     }
 
+    /*
+
+        Se ho Dragon Ball Vol. 2
+        Dragon Ball 2
+
+        li normalizza e li converte in
+
+        dragon ball
+        dragon ball
+
+        ------
+
+        0.0 nessuna parola in comune
+        0.5 somiglianza media
+        1.0 stessi token significativi
+     */
     private static double tokenOverlapScore(String a, String b) {
+        //li normalizza
         String na = normalizeTitleKey(a);
         String nb = normalizeTitleKey(b);
         if (na.isBlank() || nb.isBlank()) return 0.0;
 
+        //li mette sotto forma di insiemi
         var sa = new java.util.HashSet<>(java.util.Arrays.asList(na.split(" ")));
         var sb = new java.util.HashSet<>(java.util.Arrays.asList(nb.split(" ")));
         sa.removeIf(t -> t.length() <= 2);
-        sb.removeIf(t -> t.length() <= 2);
+        sb.removeIf(t -> t.length() <= 2); //rimuove parole poco significative (di, il, la, a)
         if (sa.isEmpty() || sb.isEmpty()) return 0.0;
 
         int inter = 0;
-        for (String t : sa) if (sb.contains(t)) inter++;
-        int union = sa.size() + sb.size() - inter;
-        return union == 0 ? 0.0 : (double) inter / (double) union;
+        for (String t : sa) if (sb.contains(t)) inter++; //calcola intersezione
+        int union = sa.size() + sb.size() - inter; //calcola unione
+        return union == 0 ? 0.0 : (double) inter / (double) union; //fa il rapporto e ottiene indice similarità di Jaccard (parole comuni / parole totali diverse)
     }
 
     private static boolean authorCompatible(String a1, String a2) {
