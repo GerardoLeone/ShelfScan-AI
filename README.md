@@ -53,27 +53,9 @@ Il problema affrontato è la catalogazione manuale di una libreria personale. No
 
 ## Architettura
 
-```mermaid
-flowchart LR
-    U[Utente] --> F[Flutter App]
-    F -->|Login Microsoft| EA[Azure App Service Authentication]
-    F -->|REST API + session cookie| B[Spring Boot Backend]
-
-    B --> KV[Azure Key Vault]
-    B --> SQL[Azure SQL Database]
-    B --> BS[Azure Blob Storage]
-    B --> AI[Gemini API]
-    B --> INS[Application Insights]
-
-    SQL --> B
-    BS --> B
-    AI --> B
-    B --> F
-```
+![Architettura ShelfScan AI](docs/images/architecture.png)
 
 Il frontend non comunica direttamente con database, storage o servizi AI. Tutte le operazioni passano dal backend, che gestisce autenticazione, logica applicativa, salvataggio dati, upload immagini e accesso ai segreti.
-
-Questa separazione mantiene il frontend più semplice e limita l'esposizione di informazioni sensibili.
 
 ---
 
